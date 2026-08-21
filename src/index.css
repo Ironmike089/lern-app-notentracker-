@@ -34,6 +34,12 @@
 
   --radius-card: 1.1rem;
   --radius-control: 0.7rem;
+  --radius-pill: 999px;
+
+  /* Hero surface: a faint directional wash, not a flat brand-color block */
+  --gradient-hero: linear-gradient(135deg, color-mix(in oklab, var(--color-mint) 14%, transparent) 0%, transparent 55%),
+    radial-gradient(120% 140% at 100% 0%, color-mix(in oklab, var(--color-violet) 10%, transparent) 0%, transparent 60%);
+  --glow-mint: 0 0 32px -8px color-mix(in oklab, var(--color-mint) 55%, transparent);
 }
 
 html {
@@ -111,4 +117,32 @@ body {
 
 .animate-backdrop-in {
   animation: backdrop-in 200ms ease-out;
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-rise-in {
+  animation: rise-in 200ms ease-out;
+}
+
+/* Users who ask for less motion get near-instant transitions everywhere,
+   not just on the few effects we'd remember to gate individually. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

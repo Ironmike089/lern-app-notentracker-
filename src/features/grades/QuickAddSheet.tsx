@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
-import type { AssessmentCategory, GradingScale, Subject } from '../../domain/types'
+import type { AssessmentCategory, GradeEntry, GradingScale, Subject } from '../../domain/types'
 import { getSchoolProfile } from '../../services/onboardingService'
 import { subjectRepository } from '../../storage/repositories'
 import { getCategoriesForSubject } from '../../services/categoryService'
 import { createGradeEntry } from '../../services/gradeEntryService'
+import { getSubjectAveragePreview, type SubjectAveragePreview } from '../../services/gradeStatsService'
 import { Sheet } from '../../components/ui/Sheet'
 import { Button } from '../../components/ui/Button'
 import { ErrorBanner } from '../../components/ui/ErrorBanner'
@@ -13,6 +14,7 @@ import { useToast } from '../../components/ui/toastContext'
 import { useSemesterView } from '../app-shell/semesterView'
 import { cn } from '../../utils/cn'
 import { ValuePicker } from './ValuePicker'
+import { AveragePreviewLine } from './AveragePreviewLine'
 
 export interface QuickAddPrefill {
   subjectId?: string
@@ -48,6 +50,7 @@ export function QuickAddSheet({ open, prefill, onClose, onSaved }: QuickAddSheet
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [preview, setPreview] = useState<SubjectAveragePreview | null>(null)
 
   useEffect(() => {
     if (!open) return
@@ -78,6 +81,36 @@ export function QuickAddSheet({ open, prefill, onClose, onSaved }: QuickAddSheet
   }, [subjectId])
 
   const selectedSubject = useMemo(() => subjects.find((s) => s.id === subjectId), [subjects, subjectId])
+
+  useEffect(() => {
+    if (!selectedSubject || !categoryId || value === null || !selectedSemesterId || !scale) {
+      setPreview(null)
+      return
+    }
+    let active = true
+    const candidate: GradeEntry = {
+      id: '__preview__',
+      subjectId: selectedSubject.id,
+      categoryId,
+      semesterId: selectedSemesterId,
+      value,
+      scale,
+      weight,
+      date,
+      title: 'Vorschau',
+      createdAt: '',
+      updatedAt: '',
+    }
+    getSubjectAveragePreview(selectedSubject, selectedSemesterId, categoryId, (entries) => [
+      ...entries,
+      candidate,
+    ]).then((p) => {
+      if (active) setPreview(p)
+    })
+    return () => {
+      active = false
+    }
+  }, [selectedSubject, categoryId, value, weight, selectedSemesterId, scale, date])
 
   async function handleSave() {
     if (!subjectId || !categoryId || value === null || !selectedSemesterId) return
@@ -187,6 +220,7 @@ export function QuickAddSheet({ open, prefill, onClose, onSaved }: QuickAddSheet
                     <div className="space-y-2">
                       <p className="text-xs font-semibold uppercase tracking-wide text-ink-faint">Wert</p>
                       <ValuePicker scale={scale} value={value} onChange={setValue} />
+                      <AveragePreviewLine subjectName={selectedSubject.name} preview={preview} />
                     </div>
                   )}
                 </>

@@ -1,15 +1,28 @@
 import { performanceColorVar, type PerformanceTier } from '../../domain/grading'
 import { cn } from '../../utils/cn'
 
+const TIER_LABEL: Record<PerformanceTier, string> = {
+  excellent: 'stark',
+  good: 'gut',
+  medium: 'mittel',
+  warning: 'schwach',
+  critical: 'kritisch',
+}
+
 interface PerformanceBarProps {
   score: number
   tier: PerformanceTier
   size?: 'sm' | 'lg'
+  glow?: boolean
   className?: string
 }
 
-/** Horizontal "Kritisch -> Stark" indicator with a marker at the current performance score (0-100). */
-export function PerformanceBar({ score, tier, size = 'lg', className }: PerformanceBarProps) {
+/**
+ * Horizontal "kritisch -> stark" indicator with a marker at the current
+ * performance score (0-100). Color is never the only signal — the marker's
+ * position and an sr-only label carry the same information as the color.
+ */
+export function PerformanceBar({ score, tier, size = 'lg', glow = false, className }: PerformanceBarProps) {
   const color = performanceColorVar(tier)
 
   return (
@@ -20,18 +33,25 @@ export function PerformanceBar({ score, tier, size = 'lg', className }: Performa
           <span>Stark</span>
         </div>
       )}
-      <div className={cn('relative w-full rounded-full bg-bg-raised', size === 'lg' ? 'h-2' : 'h-1.5')}>
+      <div
+        className={cn('relative w-full rounded-full bg-bg-raised', size === 'lg' ? 'h-2' : 'h-1.5')}
+        role="img"
+        aria-label={`Leistung: ${TIER_LABEL[tier]}, ${Math.round(score)} von 100`}
+      >
         <div
           className="absolute inset-y-0 left-0 rounded-full transition-[width] duration-[220ms] ease-out"
           style={{ width: `${score}%`, backgroundColor: color }}
         />
         <div
-          className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-bg-card shadow transition-[left] duration-[220ms] ease-out"
+          className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-bg-card transition-[left] duration-[220ms] ease-out"
           style={{
             left: `${score}%`,
             backgroundColor: color,
             width: size === 'lg' ? '0.9rem' : '0.65rem',
             height: size === 'lg' ? '0.9rem' : '0.65rem',
+            boxShadow: glow
+              ? `0 0 20px -4px color-mix(in oklab, ${color} 70%, transparent)`
+              : '0 1px 2px rgba(0,0,0,0.3)',
           }}
         />
       </div>

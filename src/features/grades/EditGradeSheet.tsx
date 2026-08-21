@@ -1,23 +1,27 @@
 import { useEffect, useState } from 'react'
-import type { AssessmentCategory, GradeEntry } from '../../domain/types'
+import type { AssessmentCategory, GradeEntry, Subject } from '../../domain/types'
 import { deleteGradeEntry, updateGradeEntry } from '../../services/gradeEntryService'
+import { getSubjectAveragePreview, type SubjectAveragePreview } from '../../services/gradeStatsService'
 import { Sheet } from '../../components/ui/Sheet'
 import { Button } from '../../components/ui/Button'
 import { ErrorBanner } from '../../components/ui/ErrorBanner'
 import { useToast } from '../../components/ui/toastContext'
 import { cn } from '../../utils/cn'
 import { ValuePicker } from './ValuePicker'
+import { AveragePreviewLine } from './AveragePreviewLine'
 
 const WEIGHT_OPTIONS = [1, 2, 3]
 
 interface EditGradeSheetProps {
   entry: GradeEntry | null
+  subject: Subject
+  semesterId: string
   categories: AssessmentCategory[]
   onClose: () => void
   onChanged: () => void
 }
 
-export function EditGradeSheet({ entry, categories, onClose, onChanged }: EditGradeSheetProps) {
+export function EditGradeSheet({ entry, subject, semesterId, categories, onClose, onChanged }: EditGradeSheetProps) {
   const { showToast } = useToast()
 
   const [displayEntry, setDisplayEntry] = useState<GradeEntry | null>(entry)
@@ -30,6 +34,7 @@ export function EditGradeSheet({ entry, categories, onClose, onChanged }: EditGr
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [preview, setPreview] = useState<SubjectAveragePreview | null>(null)
 
   useEffect(() => {
     if (!entry) return
@@ -43,6 +48,22 @@ export function EditGradeSheet({ entry, categories, onClose, onChanged }: EditGr
     setConfirmingDelete(false)
     setError(null)
   }, [entry])
+
+  useEffect(() => {
+    if (!displayEntry || value === null) {
+      setPreview(null)
+      return
+    }
+    let active = true
+    getSubjectAveragePreview(subject, semesterId, displayEntry.categoryId, (entries) =>
+      entries.map((e) => (e.id === displayEntry.id ? { ...e, value, weight } : e)),
+    ).then((p) => {
+      if (active) setPreview(p)
+    })
+    return () => {
+      active = false
+    }
+  }, [subject, semesterId, displayEntry, value, weight])
 
   async function handleSave() {
     if (!displayEntry || value === null || !categoryId) return
@@ -80,6 +101,7 @@ export function EditGradeSheet({ entry, categories, onClose, onChanged }: EditGr
         <div className="space-y-2">
           <p className="text-xs font-semibold uppercase tracking-wide text-ink-faint">Wert</p>
           <ValuePicker scale={displayEntry.scale} value={value} onChange={setValue} />
+          <AveragePreviewLine subjectName={subject.name} preview={preview} />
         </div>
 
         <div className="space-y-2">
