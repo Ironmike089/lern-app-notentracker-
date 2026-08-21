@@ -1,0 +1,83 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Inter', system-ui, 'Segoe UI', Roboto, sans-serif;
+
+  /* Surfaces: dark anthracite with a faint green/blue undertone */
+  --color-bg: #0c1310;
+  --color-bg-raised: #131f19;
+  --color-bg-card: #17241d;
+  --color-bg-card-hover: #1d2e25;
+  --color-border: #263229;
+  --color-border-strong: #354238;
+
+  /* Text */
+  --color-ink: #eef3ef;
+  --color-ink-soft: #a9b6ae;
+  --color-ink-faint: #6f7c74;
+
+  /* Brand accents */
+  --color-mint: #38e6a4;
+  --color-mint-soft: #1f4a3a;
+  --color-violet: #8b93f5;
+  --color-violet-soft: #2b2c52;
+
+  /* Performance scale (semantic, not a hue-rotation shortcut) */
+  --color-perf-excellent: #38e6a4;
+  --color-perf-good: #a8e05f;
+  --color-perf-mid: #f2c94c;
+  --color-perf-warn: #f2984a;
+  --color-perf-bad: #f2555f;
+
+  --radius-card: 1.1rem;
+  --radius-control: 0.7rem;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100svh;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-toast-in {
+  animation: toast-in 180ms ease-out;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 200ms ease-out;
+}
