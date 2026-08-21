@@ -1,14 +1,19 @@
 import type { GradingScale } from './types'
 
 /**
- * Pure grading calculations. No UI, no storage — safe to unit test in isolation.
+ * The grade calculation engine. Pure functions only — no UI, no storage —
+ * so the math can be unit tested in isolation from React and Dexie.
  *
  * Two scales are supported:
  * - grade_1_6: German school grades, 1 = best, 6 = worst (SMALLER is better).
  * - points_0_15: Gymnasiale Oberstufe points, 0 = worst, 15 = best (BIGGER is better).
+ *
+ * Hierarchy: individual GradeEntry -> categoryAverage -> subjectAverage -> overallAverage.
+ * The latter two share one combinator (`combineWeightedResults`) since both are
+ * "weighted average of child averages, refusing to blend incompatible scales".
  */
 
-export type PerformanceTier = 'excellent' | 'good' | 'mid' | 'warn' | 'bad'
+export type PerformanceTier = 'excellent' | 'good' | 'medium' | 'warning' | 'critical'
 
 /** 0 = 6, 15 = 1+, matches the official Punkte-zu-Note orientation table. */
 const POINTS_TO_GRADE_LABEL: Record<number, string> = {
@@ -38,7 +43,7 @@ export function gradeValueBounds(scale: GradingScale): { min: number; max: numbe
   return scale === 'points_0_15' ? { min: 0, max: 15 } : { min: 1, max: 6 }
 }
 
-/** Maps a points value (0–15) to its approximate 1–6 grade band, for display and tiering. */
+/** Maps a points value (0–15) to its approximate 1–6 grade band, for display only. */
 export function pointsToGradeBand(points: number): number {
   if (points >= 13) return 1
   if (points >= 10) return 2
@@ -54,12 +59,56 @@ export function pointsToGradeLabel(points: number): string {
   return POINTS_TO_GRADE_LABEL[Math.min(15, Math.max(0, rounded))] ?? '–'
 }
 
+// ---------------------------------------------------------------------------
+// Input validation
+// ---------------------------------------------------------------------------
+
+export interface ValidationResult {
+  valid: boolean
+  error?: string
+}
+
+/** Grade values are entered as whole numbers within the scale's bounds — no 0/7 on grade_1_6, no decimals. */
+export function validateGradeValue(value: number, scale: GradingScale): ValidationResult {
+  if (!Number.isFinite(value)) {
+    return { valid: false, error: 'Bitte gib eine gültige Zahl ein.' }
+  }
+  if (!Number.isInteger(value)) {
+    return { valid: false, error: 'Einzelne Werte müssen ganze Zahlen sein.' }
+  }
+  const { min, max } = gradeValueBounds(scale)
+  if (value < min || value > max) {
+    return { valid: false, error: `Werte müssen zwischen ${min} und ${max} liegen.` }
+  }
+  return { valid: true }
+}
+
+/** Category-level weighting (relative, e.g. 2 vs 1, or 50 vs 30 vs 20) — must not be negative. */
+export function validateCategoryWeight(weight: number): ValidationResult {
+  if (!Number.isFinite(weight) || weight < 0) {
+    return { valid: false, error: 'Die Gewichtung darf nicht negativ sein.' }
+  }
+  return { valid: true }
+}
+
+/** Individual entry multiplicity (e.g. "2x") — must be a positive number. */
+export function validateEntryWeight(weight: number): ValidationResult {
+  if (!Number.isFinite(weight) || weight <= 0) {
+    return { valid: false, error: 'Die Gewichtung muss größer als 0 sein.' }
+  }
+  return { valid: true }
+}
+
+// ---------------------------------------------------------------------------
+// Averaging core
+// ---------------------------------------------------------------------------
+
 export interface WeightedInput {
   value: number
   weight: number
 }
 
-/** Weighted average; falls back to a plain mean when all weights are zero. */
+/** Weighted average; falls back to a plain mean when all weights are zero (e.g. all-0 category weights). */
 export function calculateWeightedAverage(entries: WeightedInput[]): number | null {
   if (entries.length === 0) return null
   const totalWeight = entries.reduce((sum, e) => sum + e.weight, 0)
@@ -69,19 +118,152 @@ export function calculateWeightedAverage(entries: WeightedInput[]): number | nul
   return entries.reduce((sum, e) => sum + e.value * e.weight, 0) / totalWeight
 }
 
-/** Classifies a value into a performance tier, scale-aware (direction differs per scale). */
-export function performanceTier(value: number, scale: GradingScale): PerformanceTier {
-  const gradeLike = scale === 'points_0_15' ? pointsToGradeBand(value) : value
-  if (gradeLike <= 1.5) return 'excellent'
-  if (gradeLike <= 2.5) return 'good'
-  if (gradeLike <= 3.5) return 'mid'
-  if (gradeLike <= 4.5) return 'warn'
-  return 'bad'
+/**
+ * Result of any averaging step. `value`/`scale` are both null whenever
+ * there's nothing to show yet (no entries) OR the inputs mixed incompatible
+ * scales — those two "empty" cases are told apart by `mixedScales`.
+ */
+export interface AverageResult {
+  value: number | null
+  scale: GradingScale | null
+  mixedScales: boolean
 }
 
-export function performanceColorVar(tier: PerformanceTier): string {
-  return `var(--color-perf-${tier === 'excellent' ? 'excellent' : tier})`
+export const EMPTY_AVERAGE: AverageResult = { value: null, scale: null, mixedScales: false }
+
+export interface ScaledEntry {
+  value: number
+  weight: number
+  scale: GradingScale
 }
+
+/**
+ * categoryAverage = Σ(value × weight) / Σ(weight) over one category's grade entries.
+ * Refuses to compute a number across entries recorded under different scales
+ * (can happen if the profile's grading scale was changed after entries existed).
+ */
+export function categoryAverage(entries: ScaledEntry[]): AverageResult {
+  if (entries.length === 0) return EMPTY_AVERAGE
+
+  const scales = new Set(entries.map((e) => e.scale))
+  if (scales.size > 1) {
+    return { value: null, scale: null, mixedScales: true }
+  }
+
+  const value = calculateWeightedAverage(entries.map((e) => ({ value: e.value, weight: e.weight })))
+  return { value, scale: entries[0].scale, mixedScales: false }
+}
+
+interface WeightedResult {
+  result: AverageResult
+  weight: number
+}
+
+/**
+ * Shared core for subjectAverage (categories -> subject) and overallAverage
+ * (subjects -> whole school): weighted-average the child results, but only
+ * over children that (a) actually have a value and (b) agree on scale.
+ * Empty children are skipped rather than dragging the average down; any
+ * child that is itself mixed-scale — or children that disagree with each
+ * other's scale — makes the *whole* result mixed rather than a silent guess.
+ */
+function combineWeightedResults(items: WeightedResult[]): AverageResult {
+  const anyChildMixed = items.some((i) => i.result.mixedScales)
+
+  const usable = items.filter(
+    (i): i is WeightedResult & { result: { value: number; scale: GradingScale } } =>
+      !i.result.mixedScales && i.result.value !== null && i.result.scale !== null,
+  )
+
+  if (usable.length === 0) {
+    return { value: null, scale: null, mixedScales: anyChildMixed }
+  }
+
+  const scales = new Set(usable.map((i) => i.result.scale))
+  const scaleConflict = scales.size > 1
+
+  // Any scale conflict anywhere in the tree — a mixed child, or usable
+  // children disagreeing with each other — means no honest number exists
+  // at this level either. Never compute a value alongside mixedScales: true.
+  if (anyChildMixed || scaleConflict) {
+    return { value: null, scale: null, mixedScales: true }
+  }
+
+  const value = calculateWeightedAverage(usable.map((i) => ({ value: i.result.value, weight: i.weight })))
+  return { value, scale: usable[0].result.scale, mixedScales: false }
+}
+
+export interface WeightedCategoryAverage {
+  average: AverageResult
+  /** The category's own relative weight (AssessmentCategory.weight). Disabled categories should be filtered out before calling. */
+  weight: number
+}
+
+/**
+ * subjectAverage = Σ(categoryAverage × categoryWeight) / Σ(categoryWeight),
+ * over categories that actually have grades. Empty categories are excluded
+ * entirely so they can't artificially drag the subject average down.
+ */
+export function subjectAverage(categories: WeightedCategoryAverage[]): AverageResult {
+  return combineWeightedResults(categories.map((c) => ({ result: c.average, weight: c.weight })))
+}
+
+export interface WeightedSubjectAverage {
+  average: AverageResult
+  /** Relative subject weight; defaults to 1 for every subject until per-subject weighting exists. */
+  weight: number
+}
+
+/**
+ * overallAverage = weighted average of subject averages. Subjects without
+ * grades yet are excluded. If the active subjects span more than one
+ * grading scale, no single number can represent them honestly — the result
+ * comes back as mixedScales instead of a misleading average.
+ */
+export function overallAverage(subjects: WeightedSubjectAverage[]): AverageResult {
+  return combineWeightedResults(subjects.map((s) => ({ result: s.average, weight: s.weight })))
+}
+
+// ---------------------------------------------------------------------------
+// Performance score & color tiers (UI-facing, scale-independent 0–100)
+// ---------------------------------------------------------------------------
+
+function clampScore(score: number): number {
+  return Math.min(100, Math.max(0, score))
+}
+
+/**
+ * Normalizes any grade value onto a 0–100 "how good is this" scale so charts,
+ * bars and colors can work identically regardless of grading system. This is
+ * NOT a grade and must never be displayed as one.
+ */
+export function performanceScore(value: number, scale: GradingScale): number {
+  if (scale === 'points_0_15') {
+    return clampScore((value / 15) * 100)
+  }
+  return clampScore(((6 - value) / 5) * 100)
+}
+
+export function performanceTierFromScore(score: number): PerformanceTier {
+  if (score >= 85) return 'excellent'
+  if (score >= 70) return 'good'
+  if (score >= 50) return 'medium'
+  if (score >= 30) return 'warning'
+  return 'critical'
+}
+
+export function performanceTier(value: number, scale: GradingScale): PerformanceTier {
+  return performanceTierFromScore(performanceScore(value, scale))
+}
+
+/** Central color lookup — components read this instead of computing their own colors. */
+export function performanceColorVar(tier: PerformanceTier): string {
+  return `var(--color-perf-${tier})`
+}
+
+// ---------------------------------------------------------------------------
+// Formatting
+// ---------------------------------------------------------------------------
 
 /** Formats a number the German way, e.g. 1.75 -> "1,75". */
 export function formatNumberDe(value: number, decimals: number): string {

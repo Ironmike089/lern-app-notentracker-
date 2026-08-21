@@ -18,7 +18,7 @@ const ICONS: Record<ToastVariant, typeof Info> = {
 
 const VARIANT_TEXT: Record<ToastVariant, string> = {
   success: 'text-mint',
-  error: 'text-perf-bad',
+  error: 'text-danger',
   info: 'text-violet',
 }
 

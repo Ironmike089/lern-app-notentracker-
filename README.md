@@ -14,15 +14,15 @@ Ein moderner, local-first Notentracker für deutsche weiterführende Schulen —
 
 ```
 src/
-  domain/       reine Typen & Konstanten (Entities, Bundesländer, Schularten, Fächerkatalog, Notenlogik)
+  domain/       reine Typen & Konstanten + die Grade Engine (Entities, Bundesländer, Schularten, Fächerkatalog, grading.ts)
   storage/      Dexie-Schema + generischer Repository-Layer
-  services/     Orchestrierung von Storage-Zugriffen (Onboarding, Schuljahr)
-  components/   wiederverwendbare UI-Bausteine (Button, Card, Toast, …)
-  features/     Screens/Flows (Onboarding, Dashboard, App-Shell)
+  services/     Orchestrierung von Storage-Zugriffen (Onboarding, Schuljahr, Kategorien, Noteneinträge, Fach-Statistiken)
+  components/   wiederverwendbare UI-Bausteine (Button, Card, Sheet, Toast, PerformanceBar, …)
+  features/     Screens/Flows (Onboarding, Dashboard, App-Shell, Fachdetail, Notenverwaltung)
   app/          Routing-Glue (RootGate, OnboardingRoute)
 ```
 
-Berechnungslogik (`domain/grading.ts`) ist bewusst frei von UI- und Storage-Code und unabhängig testbar.
+Die Berechnungs-Engine (`domain/grading.ts`) ist bewusst frei von UI- und Storage-Code, unit-getestet (`*.test.ts`, Vitest) und bildet die Hierarchie categoryAverage → subjectAverage → overallAverage nach. Sie erkennt automatisch, wenn Einträge unterschiedlicher Bewertungssysteme (Noten 1–6 vs. Punkte 0–15) nicht sinnvoll gemischt werden dürfen, statt einen irreführenden Schnitt zu berechnen.
 
 ## Entwicklung
 
@@ -36,6 +36,7 @@ npm run dev
 ```bash
 npm run build   # tsc -b && vite build
 npm run lint     # oxlint
+npm run test     # vitest run — v. a. die Grade Engine
 ```
 
 ## Deployment (GitHub Pages)

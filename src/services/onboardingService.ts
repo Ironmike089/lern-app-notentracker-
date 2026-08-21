@@ -1,6 +1,8 @@
-import type { GradingScale, SchoolProfile, SchoolType, StateCode, Subject } from '../domain/types'
+import type { AssessmentCategory, GradingScale, SchoolProfile, SchoolType, StateCode, Subject } from '../domain/types'
+import { buildDefaultCategories } from '../domain/assessmentCategories'
 import { createId, nowIso } from '../utils/id'
 import {
+  assessmentCategoryRepository,
   schoolProfileRepository,
   subjectRepository,
   userSettingsRepository,
@@ -56,9 +58,14 @@ export async function completeOnboarding(selection: OnboardingSelection): Promis
     createdAt: timestamp,
   }))
 
+  const defaultCategories: AssessmentCategory[] = subjects.flatMap((subject) =>
+    buildDefaultCategories(subject.id, createId),
+  )
+
   await schoolProfileRepository.put(profile)
   await subjectRepository.bulkPut(subjects)
-  await ensureCurrentSchoolYear()
+  await assessmentCategoryRepository.bulkPut(defaultCategories)
+  await ensureCurrentSchoolYear({ upperSecondary: selection.upperSecondary })
   await userSettingsRepository.put({
     id: 'app',
     onboardingCompleted: true,

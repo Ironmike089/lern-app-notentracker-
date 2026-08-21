@@ -25,9 +25,12 @@
   /* Performance scale (semantic, not a hue-rotation shortcut) */
   --color-perf-excellent: #38e6a4;
   --color-perf-good: #a8e05f;
-  --color-perf-mid: #f2c94c;
-  --color-perf-warn: #f2984a;
-  --color-perf-bad: #f2555f;
+  --color-perf-medium: #f2c94c;
+  --color-perf-warning: #f2984a;
+  --color-perf-critical: #f2555f;
+
+  /* Generic UI state, independent of the grading performance scale */
+  --color-danger: #f2555f;
 
   --radius-card: 1.1rem;
   --radius-control: 0.7rem;
@@ -80,4 +83,32 @@ body {
 
 .animate-fade-in {
   animation: fade-in 200ms ease-out;
+}
+
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-sheet-in {
+  animation: sheet-in 220ms ease-out;
+}
+
+@keyframes backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-backdrop-in {
+  animation: backdrop-in 200ms ease-out;
 }

@@ -1,43 +1,47 @@
 import { useEffect, useState } from 'react'
 import { BookOpen } from 'lucide-react'
-import type { SchoolProfile, Subject } from '../../domain/types'
+import type { SchoolProfile } from '../../domain/types'
 import { getSchoolProfile } from '../../services/onboardingService'
-import { subjectRepository } from '../../storage/repositories'
+import { getOverallStats, type OverallStats } from '../../services/gradeStatsService'
 import { EmptyState } from '../../components/ui/EmptyState'
+import { useSemesterView } from '../app-shell/semesterView'
+import { useGradeDataVersion } from '../grades/gradeDataVersion'
 import { DashboardSkeleton } from './DashboardSkeleton'
 import { OverallSummaryCard } from './OverallSummaryCard'
 import { SubjectCard } from './SubjectCard'
 
-type LoadState = 'loading' | 'ready'
-
 export function Dashboard() {
-  const [loadState, setLoadState] = useState<LoadState>('loading')
+  const { selectedSemesterId, loading: semesterLoading } = useSemesterView()
+  const { version } = useGradeDataVersion()
+
   const [profile, setProfile] = useState<SchoolProfile | undefined>()
-  const [subjects, setSubjects] = useState<Subject[]>([])
+  const [stats, setStats] = useState<OverallStats | undefined>()
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (!selectedSemesterId) return
     let active = true
-    Promise.all([getSchoolProfile(), subjectRepository.getAll()]).then(([p, allSubjects]) => {
+    setLoading(true)
+    Promise.all([getSchoolProfile(), getOverallStats(selectedSemesterId)]).then(([p, s]) => {
       if (!active) return
       setProfile(p)
-      setSubjects(allSubjects.filter((s) => !s.archived))
-      setLoadState('ready')
+      setStats(s)
+      setLoading(false)
     })
     return () => {
       active = false
     }
-  }, [])
+  }, [selectedSemesterId, version])
 
-  if (loadState === 'loading') return <DashboardSkeleton />
-  if (!profile) return null
+  if (semesterLoading || loading || !profile || !stats) return <DashboardSkeleton />
 
   return (
     <div className="space-y-6">
-      <OverallSummaryCard profile={profile} />
+      <OverallSummaryCard profile={profile} stats={stats} />
 
       <div className="space-y-2">
         <p className="text-sm font-semibold text-ink-soft">Deine Fächer</p>
-        {subjects.length === 0 ? (
+        {stats.subjects.length === 0 ? (
           <EmptyState
             icon={<BookOpen className="h-5 w-5" strokeWidth={1.75} />}
             title="Noch keine Fächer"
@@ -45,8 +49,8 @@ export function Dashboard() {
           />
         ) : (
           <div className="space-y-2">
-            {subjects.map((subject) => (
-              <SubjectCard key={subject.id} subject={subject} />
+            {stats.subjects.map((subjectStats) => (
+              <SubjectCard key={subjectStats.subject.id} stats={subjectStats} />
             ))}
           </div>
         )}

@@ -85,6 +85,13 @@ export interface GradeEntry {
   semesterId: string
   categoryId: string
   value: number
+  /**
+   * Grading scale this entry was recorded under — a permanent snapshot, not
+   * derived from the current SchoolProfile. If the profile's scale changes
+   * later, existing entries keep the scale they were actually entered in,
+   * so the engine can detect and refuse to blend incompatible values later.
+   */
+  scale: GradingScale
   weight?: number
   date: string
   title: string
