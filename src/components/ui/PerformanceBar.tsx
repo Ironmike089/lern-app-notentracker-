@@ -14,6 +14,8 @@ interface PerformanceBarProps {
   tier: PerformanceTier
   size?: 'sm' | 'lg'
   glow?: boolean
+  /** Optional second, smaller marker (e.g. a Zielnote) at another position on the same 0-100 scale. */
+  goalScore?: number
   className?: string
 }
 
@@ -22,7 +24,7 @@ interface PerformanceBarProps {
  * performance score (0-100). Color is never the only signal — the marker's
  * position and an sr-only label carry the same information as the color.
  */
-export function PerformanceBar({ score, tier, size = 'lg', glow = false, className }: PerformanceBarProps) {
+export function PerformanceBar({ score, tier, size = 'lg', glow = false, goalScore, className }: PerformanceBarProps) {
   const color = performanceColorVar(tier)
 
   return (
@@ -36,12 +38,23 @@ export function PerformanceBar({ score, tier, size = 'lg', glow = false, classNa
       <div
         className={cn('relative w-full rounded-full bg-bg-raised', size === 'lg' ? 'h-2' : 'h-1.5')}
         role="img"
-        aria-label={`Leistung: ${TIER_LABEL[tier]}, ${Math.round(score)} von 100`}
+        aria-label={`Leistung: ${TIER_LABEL[tier]}, ${Math.round(score)} von 100${goalScore !== undefined ? `, Ziel bei ${Math.round(goalScore)} von 100` : ''}`}
       >
         <div
           className="absolute inset-y-0 left-0 rounded-full transition-[width] duration-[220ms] ease-out"
           style={{ width: `${score}%`, backgroundColor: color }}
         />
+        {goalScore !== undefined && (
+          <div
+            aria-hidden="true"
+            className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 rotate-45 border border-ink-soft bg-bg-card transition-[left] duration-[220ms] ease-out"
+            style={{
+              left: `${goalScore}%`,
+              width: size === 'lg' ? '0.55rem' : '0.45rem',
+              height: size === 'lg' ? '0.55rem' : '0.45rem',
+            }}
+          />
+        )}
         <div
           className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-bg-card transition-[left] duration-[220ms] ease-out"
           style={{

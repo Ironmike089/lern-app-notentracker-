@@ -1,6 +1,12 @@
 import { TrendingDown, TrendingUp } from 'lucide-react'
 import type { SchoolProfile } from '../../domain/types'
-import { formatGradeValue, formatNumberDe, performanceScore, performanceTierFromScore } from '../../domain/grading'
+import {
+  formatGradeValue,
+  formatNumberDe,
+  performanceScore,
+  performanceTierFromScore,
+  pointsToGradeLabel,
+} from '../../domain/grading'
 import type { OverallStats, OverallTrend } from '../../services/gradeStatsService'
 import { PerformanceBar } from '../../components/ui/PerformanceBar'
 import { WarningBanner } from '../../components/ui/WarningBanner'
@@ -82,6 +88,9 @@ export function DashboardHero({ profile, stats, trend, activeSubjectsCount, tota
         <p className="relative mt-4 text-xs text-ink-faint">
           {activeSubjectsCount} aktive {activeSubjectsCount === 1 ? 'Fach' : 'Fächer'} · {totalEntries}{' '}
           {totalEntries === 1 ? 'Leistung' : 'Leistungen'}
+          {hasValue && average.scale === 'points_0_15' && (
+            <> · ≈ Note {pointsToGradeLabel(average.value as number)}</>
+          )}
         </p>
       </div>
 

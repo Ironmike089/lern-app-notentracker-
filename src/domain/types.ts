@@ -67,6 +67,13 @@ export interface Subject {
   archived: boolean
   custom: boolean
   catalogId?: string
+  /**
+   * Optional relative course weighting (e.g. 2 for a 2x-weighted Leistungskurs)
+   * used when combining subjects into the overall average. Defaults to 1 when
+   * absent. A user setting / future state preset — never presented as an
+   * official rule that applies everywhere.
+   */
+  weight?: number
   createdAt: string
 }
 

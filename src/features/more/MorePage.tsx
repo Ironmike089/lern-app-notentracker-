@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react'
 import { ArchiveRestore, GraduationCap } from 'lucide-react'
 import { GERMAN_STATES } from '../../domain/germanStates'
 import { SCHOOL_TYPES } from '../../domain/schoolTypes'
-import type { SchoolProfile, Subject } from '../../domain/types'
+import type { SchoolProfile, Semester, Subject } from '../../domain/types'
 import { getSchoolProfile } from '../../services/onboardingService'
+import { getAllSemesters } from '../../services/schoolYearService'
 import { subjectRepository } from '../../storage/repositories'
 import { unarchiveSubject } from '../../services/subjectService'
 import { Card } from '../../components/ui/Card'
@@ -12,6 +13,8 @@ import { SubjectIcon } from '../../components/icons/subjectIcon'
 import { useToast } from '../../components/ui/toastContext'
 import { useGradeDataVersion } from '../grades/gradeDataVersion'
 import { DashboardSkeleton } from '../dashboard/DashboardSkeleton'
+import { SemesterManager } from './SemesterManager'
+import { UpperSecondaryNotice } from './UpperSecondaryNotice'
 
 function scaleLabel(profile: SchoolProfile): string {
   return profile.gradingScale === 'points_0_15' ? 'Punkte (0–15)' : 'Noten (1–6)'
@@ -22,17 +25,21 @@ export function MorePage() {
   const { version, bumpVersion } = useGradeDataVersion()
 
   const [profile, setProfile] = useState<SchoolProfile | undefined>()
+  const [semesters, setSemesters] = useState<Semester[]>([])
   const [archivedSubjects, setArchivedSubjects] = useState<Subject[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let active = true
-    Promise.all([getSchoolProfile(), subjectRepository.getAll()]).then(([p, subjects]) => {
-      if (!active) return
-      setProfile(p)
-      setArchivedSubjects(subjects.filter((s) => s.archived))
-      setLoading(false)
-    })
+    Promise.all([getSchoolProfile(), getAllSemesters(), subjectRepository.getAll()]).then(
+      ([p, allSemesters, subjects]) => {
+        if (!active) return
+        setProfile(p)
+        setSemesters(allSemesters)
+        setArchivedSubjects(subjects.filter((s) => s.archived))
+        setLoading(false)
+      },
+    )
     return () => {
       active = false
     }
@@ -69,6 +76,10 @@ export function MorePage() {
           </div>
         </Card>
       </div>
+
+      {profile.upperSecondary && <UpperSecondaryNotice state={profile.state} />}
+
+      <SemesterManager semesters={semesters} onRenamed={bumpVersion} />
 
       {archivedSubjects.length > 0 && (
         <div className="space-y-2">

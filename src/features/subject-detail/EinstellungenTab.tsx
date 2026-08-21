@@ -9,6 +9,7 @@ import {
   setCategoryEnabled,
   setCategoryWeight,
 } from '../../services/categoryService'
+import { setSubjectWeight } from '../../services/subjectService'
 import { Card } from '../../components/ui/Card'
 import { Switch } from '../../components/ui/Switch'
 import { Button } from '../../components/ui/Button'
@@ -16,8 +17,55 @@ import { useToast } from '../../components/ui/toastContext'
 
 interface EinstellungenTabProps {
   subjectId: string
+  subjectName: string
+  subjectWeight: number
   categories: AssessmentCategory[]
   onChanged: () => void
+}
+
+function CourseWeightControl({
+  subjectId,
+  subjectName,
+  weight,
+  onChanged,
+}: {
+  subjectId: string
+  subjectName: string
+  weight: number
+  onChanged: () => void
+}) {
+  const { showToast } = useToast()
+
+  async function handleChange(value: string) {
+    const next = Number(value)
+    if (!Number.isFinite(next) || next === weight) return
+    try {
+      await setSubjectWeight(subjectId, next)
+      onChanged()
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Gewichtung ungültig.', 'error')
+    }
+  }
+
+  return (
+    <div className="space-y-2">
+      <p className="text-sm font-semibold text-ink-soft">Kursgewichtung</p>
+      <Card className="flex items-center justify-between gap-3">
+        <p className="text-xs text-ink-faint">
+          Fließt in deinen Gesamtschnitt ein — keine offizielle Vorgabe für dein Bundesland, nur deine eigene Einstellung.
+        </p>
+        <input
+          type="number"
+          min={0}
+          step={1}
+          defaultValue={weight}
+          onBlur={(e) => handleChange(e.target.value)}
+          aria-label={`Kursgewichtung von ${subjectName}`}
+          className="w-14 shrink-0 rounded-control border border-border bg-bg-raised px-2 py-1.5 text-center text-sm text-ink outline-none transition-colors focus:border-mint"
+        />
+      </Card>
+    </div>
+  )
 }
 
 interface CategoryRowProps {
@@ -120,7 +168,13 @@ function CategoryRow({ category, isFirst, isLast, onChanged, onMove }: CategoryR
   )
 }
 
-export function EinstellungenTab({ subjectId, categories, onChanged }: EinstellungenTabProps) {
+export function EinstellungenTab({
+  subjectId,
+  subjectName,
+  subjectWeight,
+  categories,
+  onChanged,
+}: EinstellungenTabProps) {
   const [newName, setNewName] = useState('')
 
   async function handleMove(category: AssessmentCategory, direction: -1 | 1) {
@@ -142,17 +196,26 @@ export function EinstellungenTab({ subjectId, categories, onChanged }: Einstellu
   }
 
   return (
-    <div className="space-y-3">
-      {categories.map((category, index) => (
-        <CategoryRow
-          key={category.id}
-          category={category}
-          isFirst={index === 0}
-          isLast={index === categories.length - 1}
-          onChanged={onChanged}
-          onMove={(direction) => handleMove(category, direction)}
-        />
-      ))}
+    <div className="space-y-5">
+      <CourseWeightControl
+        subjectId={subjectId}
+        subjectName={subjectName}
+        weight={subjectWeight}
+        onChanged={onChanged}
+      />
+
+      <div className="space-y-3">
+        {categories.map((category, index) => (
+          <CategoryRow
+            key={category.id}
+            category={category}
+            isFirst={index === 0}
+            isLast={index === categories.length - 1}
+            onChanged={onChanged}
+            onMove={(direction) => handleMove(category, direction)}
+          />
+        ))}
+      </div>
 
       <div className="flex gap-2 pt-1">
         <input

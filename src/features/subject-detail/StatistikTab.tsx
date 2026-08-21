@@ -1,11 +1,58 @@
+import { useEffect, useState } from 'react'
 import { BarChart3 } from 'lucide-react'
 import { isHigherBetter } from '../../domain/grading'
-import type { SubjectStats } from '../../services/gradeStatsService'
+import type { DistributionBucket, TrendPoint } from '../../domain/analytics'
+import type { Insight } from '../../domain/insights'
+import type { Subject } from '../../domain/types'
+import {
+  getSubjectDistribution,
+  getSubjectInsights,
+  getSubjectTrendSeries,
+  type SubjectStats,
+} from '../../services/gradeStatsService'
 import { Card } from '../../components/ui/Card'
 import { EmptyState } from '../../components/ui/EmptyState'
+import { TrendChart } from '../../components/ui/TrendChart'
+import { DistributionChart } from '../../components/ui/DistributionChart'
+import { InsightsList } from '../../components/ui/InsightsList'
 
-export function StatistikTab({ stats }: { stats: SubjectStats }) {
+interface StatistikTabProps {
+  subject: Subject
+  stats: SubjectStats
+  semesterId: string
+}
+
+export function StatistikTab({ subject, stats, semesterId }: StatistikTabProps) {
   const allEntries = stats.categories.flatMap((c) => c.entries)
+
+  const [trend, setTrend] = useState<TrendPoint[]>([])
+  const [distribution, setDistribution] = useState<DistributionBucket[] | null>(null)
+  const [insights, setInsights] = useState<Insight[]>([])
+  const [loadingExtras, setLoadingExtras] = useState(true)
+
+  useEffect(() => {
+    if (allEntries.length === 0) {
+      setLoadingExtras(false)
+      return
+    }
+    let active = true
+    setLoadingExtras(true)
+    Promise.all([
+      getSubjectTrendSeries(subject, semesterId),
+      getSubjectDistribution(subject, semesterId),
+      getSubjectInsights(subject, semesterId),
+    ]).then(([trendPoints, dist, subjectInsights]) => {
+      if (!active) return
+      setTrend(trendPoints)
+      setDistribution(dist?.buckets ?? null)
+      setInsights(subjectInsights)
+      setLoadingExtras(false)
+    })
+    return () => {
+      active = false
+    }
+    // allEntries.length is a stable proxy for "this subject's data changed" within one stats snapshot
+  }, [subject, semesterId, allEntries.length])
 
   if (allEntries.length === 0) {
     return (
@@ -45,6 +92,31 @@ export function StatistikTab({ stats }: { stats: SubjectStats }) {
           </>
         )}
       </div>
+
+      {!loadingExtras && trend.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-sm font-semibold text-ink-soft">Verlauf</p>
+          <Card>
+            <TrendChart points={trend} />
+          </Card>
+        </div>
+      )}
+
+      {!loadingExtras && insights.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-sm font-semibold text-ink-soft">Beobachtungen</p>
+          <InsightsList insights={insights} />
+        </div>
+      )}
+
+      {!loadingExtras && distribution && (
+        <div className="space-y-2">
+          <p className="text-sm font-semibold text-ink-soft">Verteilung</p>
+          <Card>
+            <DistributionChart buckets={distribution} />
+          </Card>
+        </div>
+      )}
 
       <div className="space-y-2">
         <p className="text-sm font-semibold text-ink-soft">Gewichtung der Kategorien</p>

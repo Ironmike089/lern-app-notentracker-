@@ -1,4 +1,4 @@
-import type { AssessmentCategory, GradeEntry, Subject } from '../domain/types'
+import type { AssessmentCategory, GradeEntry, GradingScale, Subject } from '../domain/types'
 import {
   categoryAverage,
   isHigherBetter,
@@ -9,6 +9,9 @@ import {
   type AverageResult,
   type PerformanceTier,
 } from '../domain/grading'
+import { solveRequiredValue, type GoalSolverOutcome } from '../domain/goalSolver'
+import { computeSubjectTrend, computeGradeDistribution, type DistributionBucket, type TrendPoint } from '../domain/analytics'
+import { computeSubjectInsights, type Insight } from '../domain/insights'
 import { assessmentCategoryRepository, gradeEntryRepository, subjectRepository } from '../storage/repositories'
 
 export interface CategoryStats {
@@ -27,7 +30,16 @@ export interface SubjectStats {
   mixedScaleWarning: boolean
 }
 
-async function loadCategoryStats(subjectId: string, semesterId: string): Promise<CategoryStats[]> {
+/**
+ * Loads a subject's categories with whichever grade entries match
+ * `entryFilter` — the semester-scoped call sites below just filter by
+ * semesterId, but the same math powers the date-range views on the Analyse
+ * page (whole school year, custom range) without duplicating any of it.
+ */
+async function loadCategoryStats(
+  subjectId: string,
+  entryFilter: (entry: GradeEntry) => boolean,
+): Promise<CategoryStats[]> {
   const [allCategories, allEntries] = await Promise.all([
     assessmentCategoryRepository.getAll(),
     gradeEntryRepository.getAll(),
@@ -39,7 +51,7 @@ async function loadCategoryStats(subjectId: string, semesterId: string): Promise
 
   return categories.map((category) => {
     const entries = allEntries
-      .filter((e) => e.categoryId === category.id && e.semesterId === semesterId)
+      .filter((e) => e.categoryId === category.id && entryFilter(e))
       .sort((a, b) => a.date.localeCompare(b.date))
 
     return {
@@ -63,8 +75,11 @@ function deriveScoreAndTier(average: AverageResult): {
   return { performanceScore: score, performanceTier: performanceTierFromScore(score) }
 }
 
-export async function getSubjectStats(subject: Subject, semesterId: string): Promise<SubjectStats> {
-  const categories = await loadCategoryStats(subject.id, semesterId)
+async function getSubjectStatsForFilter(
+  subject: Subject,
+  entryFilter: (entry: GradeEntry) => boolean,
+): Promise<SubjectStats> {
+  const categories = await loadCategoryStats(subject.id, entryFilter)
   const enabledCategories = categories.filter((c) => c.category.enabled)
 
   const average = subjectAverage(
@@ -82,21 +97,43 @@ export async function getSubjectStats(subject: Subject, semesterId: string): Pro
   }
 }
 
+export async function getSubjectStats(subject: Subject, semesterId: string): Promise<SubjectStats> {
+  return getSubjectStatsForFilter(subject, (e) => e.semesterId === semesterId)
+}
+
 export interface OverallStats {
   average: AverageResult
   subjects: SubjectStats[]
   mixedScaleWarning: boolean
 }
 
-export async function getOverallStats(semesterId: string): Promise<OverallStats> {
+async function getOverallStatsForFilter(entryFilter: (entry: GradeEntry) => boolean): Promise<OverallStats> {
   const allSubjects = await subjectRepository.getAll()
   const activeSubjects = allSubjects.filter((s) => !s.archived)
-  const subjectStats = await Promise.all(activeSubjects.map((s) => getSubjectStats(s, semesterId)))
+  const subjectStats = await Promise.all(
+    activeSubjects.map((s) => getSubjectStatsForFilter(s, entryFilter)),
+  )
 
-  const average = overallAverage(subjectStats.map((s) => ({ average: s.average, weight: 1 })))
+  const average = overallAverage(
+    subjectStats.map((s) => ({ average: s.average, weight: s.subject.weight ?? 1 })),
+  )
   const mixedScaleWarning = average.mixedScales || subjectStats.some((s) => s.mixedScaleWarning)
 
   return { average, subjects: subjectStats, mixedScaleWarning }
+}
+
+export async function getOverallStats(semesterId: string): Promise<OverallStats> {
+  return getOverallStatsForFilter((e) => e.semesterId === semesterId)
+}
+
+/** Powers the Analyse page's "gesamtes Schuljahr" / "eigener Zeitraum" views. */
+export async function getOverallStatsForSemesters(semesterIds: string[]): Promise<OverallStats> {
+  const idSet = new Set(semesterIds)
+  return getOverallStatsForFilter((e) => idSet.has(e.semesterId))
+}
+
+export async function getOverallStatsForDateRange(from: string, to: string): Promise<OverallStats> {
+  return getOverallStatsForFilter((e) => e.date >= from && e.date <= to)
 }
 
 // ---------------------------------------------------------------------------
@@ -120,7 +157,7 @@ export async function getSubjectAveragePreview(
   categoryId: string,
   transformCategoryEntries: (entries: GradeEntry[]) => GradeEntry[],
 ): Promise<SubjectAveragePreview> {
-  const categories = await loadCategoryStats(subject.id, semesterId)
+  const categories = await loadCategoryStats(subject.id, (e) => e.semesterId === semesterId)
   const enabledCategories = categories.filter((c) => c.category.enabled)
 
   const before = subjectAverage(
@@ -172,7 +209,9 @@ export async function getOverallTrend(semesterId: string): Promise<OverallTrend 
   if (!mostRecentSubject) return null
 
   const afterStats = await Promise.all(activeSubjects.map((s) => getSubjectStats(s, semesterId)))
-  const afterOverall = overallAverage(afterStats.map((s) => ({ average: s.average, weight: 1 })))
+  const afterOverall = overallAverage(
+    afterStats.map((s) => ({ average: s.average, weight: s.subject.weight ?? 1 })),
+  )
 
   const beforeAverages = await Promise.all(
     activeSubjects.map(async (s, i) => {
@@ -185,7 +224,9 @@ export async function getOverallTrend(semesterId: string): Promise<OverallTrend 
       return preview.after
     }),
   )
-  const beforeOverall = overallAverage(beforeAverages.map((average) => ({ average, weight: 1 })))
+  const beforeOverall = overallAverage(
+    beforeAverages.map((average, i) => ({ average, weight: activeSubjects[i].weight ?? 1 })),
+  )
 
   if (
     afterOverall.value === null ||
@@ -203,4 +244,92 @@ export async function getOverallTrend(semesterId: string): Promise<OverallTrend 
   const improved = isHigherBetter(afterOverall.scale) ? delta > 0 : delta < 0
 
   return { delta, improved, scale: afterOverall.scale }
+}
+
+// ---------------------------------------------------------------------------
+// Goal solver — "Was brauche ich?"
+// ---------------------------------------------------------------------------
+
+/**
+ * Wraps domain/goalSolver.ts with real subject data: every other enabled
+ * category's already-computed average/weight, plus the target category's
+ * raw entries so the solver can fold in its existing weighted sum.
+ */
+export async function getRequiredValueForTarget(
+  subject: Subject,
+  semesterId: string,
+  targetCategoryId: string,
+  targetSubjectAverage: number,
+  scale: GradingScale,
+): Promise<GoalSolverOutcome | null> {
+  const categories = await loadCategoryStats(subject.id, (e) => e.semesterId === semesterId)
+  const targetCategory = categories.find((c) => c.category.id === targetCategoryId && c.category.enabled)
+  if (!targetCategory) return null
+
+  const others = categories
+    .filter((c) => c.category.enabled && c.category.id !== targetCategoryId)
+    .map((c) => ({ weight: c.category.weight, average: c.average }))
+
+  return solveRequiredValue(
+    others,
+    {
+      weight: targetCategory.category.weight,
+      entries: targetCategory.entries.map((e) => ({ value: e.value, weight: e.weight ?? 1 })),
+    },
+    targetSubjectAverage,
+    scale,
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Trend series & distribution — per subject
+// ---------------------------------------------------------------------------
+
+export async function getSubjectTrendSeries(subject: Subject, semesterId: string): Promise<TrendPoint[]> {
+  const categories = await loadCategoryStats(subject.id, (e) => e.semesterId === semesterId)
+  const trendEntries = categories.flatMap((c) =>
+    c.entries.map((e) => ({
+      categoryId: c.category.id,
+      categoryWeight: c.category.weight,
+      value: e.value,
+      weight: e.weight ?? 1,
+      scale: e.scale,
+      date: e.date,
+    })),
+  )
+  return computeSubjectTrend(trendEntries)
+}
+
+export async function getSubjectDistribution(subject: Subject, semesterId: string): Promise<{
+  buckets: DistributionBucket[]
+  scale: AverageResult['scale']
+} | null> {
+  const categories = await loadCategoryStats(subject.id, (e) => e.semesterId === semesterId)
+  const entries = categories.flatMap((c) => c.entries)
+  if (entries.length === 0) return null
+  const scale = entries[0].scale
+  if (entries.some((e) => e.scale !== scale)) return null
+  return { buckets: computeGradeDistribution(entries.map((e) => e.value), scale), scale }
+}
+
+/** Date-range counterpart to getSubjectStats — powers per-subject "most improved" comparisons on the Analyse page. */
+export async function getSubjectStatsForDateRange(subject: Subject, from: string, to: string): Promise<SubjectStats> {
+  return getSubjectStatsForFilter(subject, (e) => e.date >= from && e.date <= to)
+}
+
+// ---------------------------------------------------------------------------
+// Insights
+// ---------------------------------------------------------------------------
+
+export async function getSubjectInsights(subject: Subject, semesterId: string): Promise<Insight[]> {
+  const categories = await loadCategoryStats(subject.id, (e) => e.semesterId === semesterId)
+  return computeSubjectInsights(
+    subject.name,
+    categories.map((c) => ({
+      id: c.category.id,
+      name: c.category.name,
+      weight: c.category.weight,
+      entries: c.entries.map((e) => ({ value: e.value, weight: e.weight ?? 1, scale: e.scale, date: e.date })),
+    })),
+  )
 }
