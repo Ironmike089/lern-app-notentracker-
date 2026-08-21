@@ -5,6 +5,7 @@ import type { SubjectStats } from '../../services/gradeStatsService'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { EmptyState } from '../../components/ui/EmptyState'
+import { GradeBadge } from '../../components/ui/GradeBadge'
 import { useQuickAdd } from '../grades/quickAdd'
 
 interface LeistungenTabProps {
@@ -78,14 +79,15 @@ export function LeistungenTab({ subject, stats, onEditEntry }: LeistungenTabProp
 
             <div className="flex flex-wrap gap-2">
               {categoryStats.entries.map((entry) => (
-                <button
+                <GradeBadge
                   key={entry.id}
-                  type="button"
+                  value={entry.value}
+                  scale={entry.scale}
+                  label={String(entry.value)}
                   onClick={() => onEditEntry(entry)}
-                  className="flex h-9 min-w-9 items-center justify-center rounded-control border border-border bg-bg-raised px-2.5 text-sm font-semibold text-ink transition-all duration-200 hover:border-border-strong active:scale-95 animate-rise-in"
-                >
-                  {entry.value}
-                </button>
+                  aria-label={`Note ${entry.value} bearbeiten`}
+                  className="animate-rise-in"
+                />
               ))}
               <button
                 type="button"

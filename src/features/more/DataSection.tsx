@@ -1,5 +1,5 @@
 import { useRef, useState, type ChangeEvent } from 'react'
-import { Download, Trash2, Upload } from 'lucide-react'
+import { AlertTriangle, Download, Trash2, Upload } from 'lucide-react'
 import {
   backupFilename,
   buildBackup,
@@ -18,6 +18,8 @@ import { useToast } from '../../components/ui/toastContext'
 
 type Dialog = { kind: 'importConfirm'; backup: BackupFile } | { kind: 'deleteConfirm' } | null
 
+const DELETE_CONFIRM_WORD = 'LÖSCHEN'
+
 function reloadSoon() {
   window.setTimeout(() => window.location.reload(), 700)
 }
@@ -28,6 +30,12 @@ export function DataSection() {
   const [dialog, setDialog] = useState<Dialog>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
+
+  function closeDialog() {
+    setDialog(null)
+    setDeleteConfirmText('')
+  }
 
   async function handleExport() {
     const backup = await buildBackup()
@@ -59,7 +67,7 @@ export function DataSection() {
     } catch {
       setBusy(false)
       setError('Der Import ist fehlgeschlagen. Deine bisherigen Daten wurden nicht verändert.')
-      setDialog(null)
+      closeDialog()
     }
   }
 
@@ -72,11 +80,12 @@ export function DataSection() {
     } catch {
       setBusy(false)
       setError('Löschen ist fehlgeschlagen. Bitte versuch es erneut.')
-      setDialog(null)
+      closeDialog()
     }
   }
 
   const importCounts = dialog?.kind === 'importConfirm' ? summarize(dialog.backup) : null
+  const deleteConfirmMatches = deleteConfirmText.trim().toUpperCase() === DELETE_CONFIRM_WORD
 
   return (
     <div className="space-y-2">
@@ -104,22 +113,31 @@ export function DataSection() {
           onChange={handleFileSelected}
           aria-label="Backup-Datei auswählen"
         />
-        <Button
-          variant="ghost"
-          size="md"
-          className="w-full justify-start text-danger hover:bg-danger/10"
-          onClick={() => setDialog({ kind: 'deleteConfirm' })}
-        >
-          <Trash2 className="h-4 w-4" strokeWidth={2} />
-          Alle Daten löschen
-        </Button>
       </Card>
 
-      <Sheet
-        open={dialog?.kind === 'importConfirm'}
-        onClose={() => !busy && setDialog(null)}
-        title="Backup importieren?"
-      >
+      <div className="space-y-2 pt-2">
+        <p className="flex items-center gap-1.5 text-sm font-semibold text-danger">
+          <AlertTriangle className="h-4 w-4" strokeWidth={2} />
+          Gefahrenbereich
+        </p>
+        <Card className="space-y-3 border-danger/30 bg-danger/5">
+          <p className="text-xs text-ink-faint">
+            Löscht unwiderruflich alle Fächer, Noten und Einstellungen auf diesem Gerät und setzt die App auf den
+            Auslieferungszustand zurück.
+          </p>
+          <Button
+            variant="danger"
+            size="md"
+            className="w-full justify-start"
+            onClick={() => setDialog({ kind: 'deleteConfirm' })}
+          >
+            <Trash2 className="h-4 w-4" strokeWidth={2} />
+            Alle Daten löschen und App zurücksetzen
+          </Button>
+        </Card>
+      </div>
+
+      <Sheet open={dialog?.kind === 'importConfirm'} onClose={() => !busy && closeDialog()} title="Backup importieren?">
         {dialog?.kind === 'importConfirm' && importCounts && (
           <div className="flex flex-col gap-4">
             <p className="text-sm text-ink-soft">
@@ -132,7 +150,7 @@ export function DataSection() {
               Dein aktueller Stand wird vorher automatisch als Backup-Datei heruntergeladen.
             </p>
             <div className="flex gap-2">
-              <Button variant="ghost" size="lg" className="flex-1" onClick={() => setDialog(null)} disabled={busy}>
+              <Button variant="ghost" size="lg" className="flex-1" onClick={closeDialog} disabled={busy}>
                 Abbrechen
               </Button>
               <Button
@@ -150,17 +168,39 @@ export function DataSection() {
 
       <Sheet
         open={dialog?.kind === 'deleteConfirm'}
-        onClose={() => !busy && setDialog(null)}
-        title="Alle Daten löschen?"
+        onClose={() => !busy && closeDialog()}
+        title="Alle Daten löschen und App zurücksetzen?"
       >
         <div className="flex flex-col gap-4">
-          <ErrorBanner message="Dadurch werden alle Fächer, Noten und Einstellungen auf diesem Gerät unwiderruflich gelöscht." />
+          <ErrorBanner message="Dadurch werden alle Fächer, Noten und Einstellungen auf diesem Gerät unwiderruflich gelöscht. Dieser Schritt kann nicht rückgängig gemacht werden." />
           <p className="text-xs text-ink-faint">Tipp: Exportiere vorher ein Backup, falls du die Daten später brauchst.</p>
+          <div className="space-y-1.5">
+            <label htmlFor="delete-confirm-input" className="text-xs font-medium text-ink-soft">
+              Gib zur Bestätigung <span className="font-bold text-danger">{DELETE_CONFIRM_WORD}</span> ein:
+            </label>
+            <input
+              id="delete-confirm-input"
+              type="text"
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              disabled={busy}
+              autoComplete="off"
+              autoCapitalize="characters"
+              placeholder={DELETE_CONFIRM_WORD}
+              className="h-11 w-full rounded-control border border-border bg-bg-raised px-3.5 text-sm text-ink outline-none transition-colors focus:border-danger"
+            />
+          </div>
           <div className="flex gap-2">
-            <Button variant="ghost" size="lg" className="flex-1" onClick={() => setDialog(null)} disabled={busy}>
+            <Button variant="ghost" size="lg" className="flex-1" onClick={closeDialog} disabled={busy}>
               Abbrechen
             </Button>
-            <Button variant="danger" size="lg" className="flex-1" onClick={confirmDeleteAll} disabled={busy}>
+            <Button
+              variant="danger"
+              size="lg"
+              className="flex-1"
+              onClick={confirmDeleteAll}
+              disabled={busy || !deleteConfirmMatches}
+            >
               {busy ? 'Löscht…' : 'Ja, alle Daten löschen'}
             </Button>
           </div>

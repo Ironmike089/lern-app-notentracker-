@@ -1,13 +1,25 @@
 import { describe, expect, it } from 'vitest'
 import {
+  calculateConsistency,
+  calculateImprovement,
+  calculateStreakAboveRunningAverage,
+  calculateStreakAboveThreshold,
+  calculateWrittenVsOral,
   compareSemesters,
   computeGradeDistribution,
+  computeOverallStatus,
   computeScoreDeltaSince,
   computeSubjectTrend,
+  type PeriodImprovement,
   type SemesterAverageInput,
   type TrendEntryInput,
+  type TrendPoint,
 } from './analytics'
 import type { AverageResult } from './grading'
+
+function improvement(overrides: Partial<PeriodImprovement>): PeriodImprovement {
+  return { gradeDelta: 0, scoreDelta: 0, scale: 'grade_1_6', improved: false, ...overrides }
+}
 
 function entry(overrides: Partial<TrendEntryInput>): TrendEntryInput {
   return {
@@ -132,5 +144,162 @@ describe('computeScoreDeltaSince', () => {
 
   it('returns null when there is nothing at or after the cutoff', () => {
     expect(computeScoreDeltaSince(points, '2026-06-01')).toBeNull()
+  })
+})
+
+function point(overrides: Partial<TrendPoint>): TrendPoint {
+  return { date: '2026-01-01', average: 3, scale: 'grade_1_6', score: 60, ...overrides }
+}
+
+describe('calculateImprovement', () => {
+  it('computes a matching grade-scale and score-scale improvement for grade_1_6 (lower is better)', () => {
+    const points = [point({ date: '2026-01-01', average: 3, score: 60 }), point({ date: '2026-02-01', average: 2, score: 80 })]
+    const result = calculateImprovement(points, '2026-01-15')
+    expect(result).toEqual({ gradeDelta: -1, scoreDelta: 20, scale: 'grade_1_6', improved: true })
+  })
+
+  it('computes a matching improvement for points_0_15 (higher is better)', () => {
+    const points = [
+      point({ date: '2026-01-01', average: 8, scale: 'points_0_15', score: (8 / 15) * 100 }),
+      point({ date: '2026-02-01', average: 12, scale: 'points_0_15', score: (12 / 15) * 100 }),
+    ]
+    const result = calculateImprovement(points, '2026-01-15')
+    expect(result?.improved).toBe(true)
+    expect(result?.gradeDelta).toBeCloseTo(4)
+  })
+
+  it('detects a worsening trend', () => {
+    const points = [point({ date: '2026-01-01', average: 2, score: 80 }), point({ date: '2026-02-01', average: 4, score: 40 })]
+    const result = calculateImprovement(points, '2026-01-15')
+    expect(result?.improved).toBe(false)
+    expect(result?.gradeDelta).toBe(2)
+  })
+
+  it('returns null without a point on each side of the cutoff', () => {
+    const points = [point({ date: '2026-01-01' }), point({ date: '2026-01-10' })]
+    expect(calculateImprovement(points, '2026-06-01')).toBeNull()
+  })
+
+  it('returns null across a scale change (nothing honest to compare)', () => {
+    const points = [
+      point({ date: '2026-01-01', scale: 'grade_1_6' }),
+      point({ date: '2026-02-01', scale: 'points_0_15' }),
+    ]
+    expect(calculateImprovement(points, '2026-01-15')).toBeNull()
+  })
+})
+
+describe('calculateConsistency', () => {
+  it('labels near-identical scores as very consistent', () => {
+    const result = calculateConsistency([80, 82, 79, 81, 80])
+    expect(result?.label).toBe('sehr konstant')
+  })
+
+  it('labels moderately varying scores as consistent', () => {
+    const result = calculateConsistency([70, 82, 65, 75, 88])
+    expect(result?.label).toBe('konstant')
+  })
+
+  it('labels wildly varying scores as fluctuating', () => {
+    const result = calculateConsistency([20, 95, 15, 90, 10])
+    expect(result?.label).toBe('schwankend')
+  })
+
+  it('returns null with fewer than 3 data points', () => {
+    expect(calculateConsistency([80, 90])).toBeNull()
+    expect(calculateConsistency([])).toBeNull()
+  })
+
+  it('never produces NaN or a negative standard deviation', () => {
+    const result = calculateConsistency([50, 50, 50, 50])
+    expect(result?.standardDeviation).toBe(0)
+    expect(Number.isNaN(result?.standardDeviation)).toBe(false)
+  })
+})
+
+describe('calculateWrittenVsOral', () => {
+  it('compares written and oral averages when both have data', () => {
+    const written = [{ value: 2, scale: 'grade_1_6' as const }, { value: 3, scale: 'grade_1_6' as const }]
+    const oral = [{ value: 1, scale: 'grade_1_6' as const }, { value: 2, scale: 'grade_1_6' as const }]
+    const result = calculateWrittenVsOral(written, oral)
+    expect(result?.written.value).toBeCloseTo(2.5)
+    expect(result?.oral.value).toBeCloseTo(1.5)
+  })
+
+  it('returns null when written data is missing', () => {
+    expect(calculateWrittenVsOral([], [{ value: 1, scale: 'grade_1_6' }])).toBeNull()
+  })
+
+  it('returns null when oral data is missing', () => {
+    expect(calculateWrittenVsOral([{ value: 1, scale: 'grade_1_6' }], [])).toBeNull()
+  })
+
+  it('returns null when both are empty', () => {
+    expect(calculateWrittenVsOral([], [])).toBeNull()
+  })
+})
+
+describe('calculateStreakAboveThreshold', () => {
+  it('counts the trailing run at or above the threshold', () => {
+    expect(calculateStreakAboveThreshold([40, 90, 85, 95, 88], 70)).toBe(4)
+  })
+
+  it('returns 0 when the last entry is below the threshold', () => {
+    expect(calculateStreakAboveThreshold([90, 95, 40], 70)).toBe(0)
+  })
+
+  it('returns the full length when everything clears the threshold', () => {
+    expect(calculateStreakAboveThreshold([80, 85, 90], 70)).toBe(3)
+  })
+
+  it('returns 0 for an empty list', () => {
+    expect(calculateStreakAboveThreshold([], 70)).toBe(0)
+  })
+})
+
+describe('calculateStreakAboveRunningAverage', () => {
+  it('counts entries that each beat the average of everything before them', () => {
+    // avg before index2=50 -> 60>50 counts; avg before index3=(40+60)/2=50 -> 70>50 counts; avg before index4=(40+60+70)/3=56.7 -> 80>that counts
+    expect(calculateStreakAboveRunningAverage([40, 60, 70, 80])).toBe(3)
+  })
+
+  it('stops counting at the first entry that does not beat the running average', () => {
+    expect(calculateStreakAboveRunningAverage([40, 80, 30, 90])).toBe(1)
+  })
+
+  it('returns 0 for a single entry (nothing prior to compare against)', () => {
+    expect(calculateStreakAboveRunningAverage([80])).toBe(0)
+  })
+
+  it('returns 0 for an empty list', () => {
+    expect(calculateStreakAboveRunningAverage([])).toBe(0)
+  })
+})
+
+describe('computeOverallStatus', () => {
+  it('reports insufficient data when the tier is missing', () => {
+    expect(computeOverallStatus(null, improvement({ scoreDelta: 10, improved: true })).kind).toBe(
+      'insufficient-data',
+    )
+  })
+
+  it('reports insufficient data when the improvement is missing', () => {
+    expect(computeOverallStatus('good', null).kind).toBe('insufficient-data')
+  })
+
+  it('reports strong for an excellent tier, even with a small delta', () => {
+    expect(computeOverallStatus('excellent', improvement({ scoreDelta: 1 })).kind).toBe('strong')
+  })
+
+  it('reports stable when the score barely moved', () => {
+    expect(computeOverallStatus('good', improvement({ scoreDelta: 1, improved: true })).kind).toBe('stable')
+  })
+
+  it('reports improving for a meaningful positive delta', () => {
+    expect(computeOverallStatus('good', improvement({ scoreDelta: 10, improved: true })).kind).toBe('improving')
+  })
+
+  it('reports declining for a meaningful negative delta', () => {
+    expect(computeOverallStatus('medium', improvement({ scoreDelta: -10, improved: false })).kind).toBe('declining')
   })
 })

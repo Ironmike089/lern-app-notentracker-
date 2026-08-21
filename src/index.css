@@ -32,6 +32,33 @@
   /* Generic UI state, independent of the grading performance scale */
   --color-danger: #f2555f;
 
+  /*
+   * Subject colors (System A: identity of a *subject*) — deliberately a
+   * separate palette from the performance tiers above (System B: quality of
+   * a *result*). A subject's color never changes with its grades; see
+   * domain/subjectColors.ts for the catalogId -> key assignment.
+   */
+  --color-subject-blue: #5b9df9;
+  --color-subject-orange: #f2984a;
+  --color-subject-violet: #a78bfa;
+  --color-subject-green: #4ade80;
+  --color-subject-teal: #2dd4bf;
+  --color-subject-navy: #7c93f0;
+  --color-subject-cyan: #22d3ee;
+  --color-subject-amber: #d9a441;
+  --color-subject-emerald: #34d399;
+  --color-subject-red: #f2555f;
+  --color-subject-pink: #f472b6;
+  --color-subject-purple: #c084fc;
+  --color-subject-gold: #e0b84a;
+  --color-subject-coral: #fb7f6c;
+  --color-subject-sky: #60c4f2;
+  --color-subject-plum: #c98fd6;
+  --color-subject-steel: #8fa3c9;
+  --color-subject-brown: #c98a5a;
+  --color-subject-lime: #a3d94a;
+  --color-subject-rose: #f472a0;
+
   --radius-card: 1.1rem;
   --radius-control: 0.7rem;
   --radius-pill: 999px;
@@ -82,6 +109,27 @@ html {
     --color-perf-critical: #d13d47;
 
     --color-danger: #d13d47;
+
+    --color-subject-blue: #2f6fe0;
+    --color-subject-orange: #a85a17;
+    --color-subject-violet: #6d5fd6;
+    --color-subject-green: #158049;
+    --color-subject-teal: #0a7a6b;
+    --color-subject-navy: #4a5fc4;
+    --color-subject-cyan: #066f85;
+    --color-subject-amber: #a3760a;
+    --color-subject-emerald: #0a8058;
+    --color-subject-red: #d13d47;
+    --color-subject-pink: #c23a7a;
+    --color-subject-purple: #8b3fd6;
+    --color-subject-gold: #96700a;
+    --color-subject-coral: #c8502f;
+    --color-subject-sky: #1c7fb0;
+    --color-subject-plum: #9c4fae;
+    --color-subject-steel: #3f5a80;
+    --color-subject-brown: #96562e;
+    --color-subject-lime: #5a7d1c;
+    --color-subject-rose: #c23a63;
   }
 }
 
@@ -111,6 +159,27 @@ html {
   --color-perf-critical: #d13d47;
 
   --color-danger: #d13d47;
+
+  --color-subject-blue: #2f6fe0;
+  --color-subject-orange: #a85a17;
+  --color-subject-violet: #6d5fd6;
+  --color-subject-green: #158049;
+  --color-subject-teal: #0a7a6b;
+  --color-subject-navy: #4a5fc4;
+  --color-subject-cyan: #066f85;
+  --color-subject-amber: #a3760a;
+  --color-subject-emerald: #0a8058;
+  --color-subject-red: #d13d47;
+  --color-subject-pink: #c23a7a;
+  --color-subject-purple: #8b3fd6;
+  --color-subject-gold: #96700a;
+  --color-subject-coral: #c8502f;
+  --color-subject-sky: #1c7fb0;
+  --color-subject-plum: #9c4fae;
+  --color-subject-steel: #3f5a80;
+  --color-subject-brown: #96562e;
+  --color-subject-lime: #5a7d1c;
+  --color-subject-rose: #c23a63;
 }
 
 body {

@@ -32,7 +32,7 @@ export function SidebarNav() {
             {({ isActive }) => (
               <>
                 <item.icon className="h-5 w-5 shrink-0" strokeWidth={isActive ? 2.25 : 1.75} />
-                <span className="hidden lg:block">{item.label}</span>
+                <span className="sr-only lg:not-sr-only lg:block">{item.label}</span>
               </>
             )}
           </NavLink>

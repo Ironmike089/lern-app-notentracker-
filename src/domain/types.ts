@@ -81,6 +81,13 @@ export interface Subject {
   createdAt: string
 }
 
+/**
+ * How a category's grades were produced — powers the "schriftlich vs.
+ * mündlich" analysis without guessing from the category name (a category
+ * called "Test" could be written or oral depending on the school/subject).
+ */
+export type CategoryType = 'written' | 'oral' | 'presentation' | 'practical' | 'other'
+
 export interface AssessmentCategory {
   id: string
   subjectId: string
@@ -88,6 +95,8 @@ export interface AssessmentCategory {
   weight: number
   enabled: boolean
   sortOrder: number
+  /** Absent on categories created before this setting existed — treated as 'other' (excluded from written/oral analysis). */
+  categoryType?: CategoryType
 }
 
 export interface GradeEntry {

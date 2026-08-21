@@ -4,6 +4,7 @@ import {
   performanceScore,
   subjectAverage,
   type AverageResult,
+  type PerformanceTier,
 } from './grading'
 import type { GradingScale } from './types'
 
@@ -167,4 +168,152 @@ export function computeScoreDeltaSince(points: TrendPoint[], sinceDate: string):
   const latest = during[during.length - 1].score
   const delta = latest - baseline
   return { delta, improved: delta > 0 }
+}
+
+// ---------------------------------------------------------------------------
+// Improvement over a period — grade-scale delta (e.g. "0,14 besser"), not
+// just the score-point delta above. Same "needs a point on each side" rule.
+// ---------------------------------------------------------------------------
+
+export interface PeriodImprovement {
+  /** Signed change in the grade/points scale itself — e.g. -0.14 on grade_1_6 means 0.14 better. */
+  gradeDelta: number
+  scoreDelta: number
+  scale: GradingScale
+  improved: boolean
+}
+
+export function calculateImprovement(points: TrendPoint[], sinceDate: string): PeriodImprovement | null {
+  const before = points.filter((p) => p.date < sinceDate)
+  const during = points.filter((p) => p.date >= sinceDate)
+  if (before.length === 0 || during.length === 0) return null
+
+  const baseline = before[before.length - 1]
+  const latest = during[during.length - 1]
+  if (baseline.scale !== latest.scale) return null
+
+  const gradeDelta = latest.average - baseline.average
+  const scoreDelta = latest.score - baseline.score
+  return { gradeDelta, scoreDelta, scale: latest.scale, improved: scoreDelta > 0 }
+}
+
+// ---------------------------------------------------------------------------
+// Consistency — how tightly a subject's grades cluster, via population
+// standard deviation of the performance score (scale-independent, so the
+// same thresholds work for grade_1_6 and points_0_15 alike).
+// ---------------------------------------------------------------------------
+
+export type ConsistencyLabel = 'sehr konstant' | 'konstant' | 'schwankend'
+
+export interface ConsistencyResult {
+  standardDeviation: number
+  label: ConsistencyLabel
+}
+
+/** Needs at least 3 data points — with fewer, "constant vs. volatile" isn't a meaningful claim yet. */
+export function calculateConsistency(scores: number[]): ConsistencyResult | null {
+  if (scores.length < 3) return null
+  const mean = scores.reduce((sum, s) => sum + s, 0) / scores.length
+  const variance = scores.reduce((sum, s) => sum + (s - mean) ** 2, 0) / scores.length
+  const standardDeviation = Math.sqrt(variance)
+
+  let label: ConsistencyLabel
+  if (standardDeviation <= 8) label = 'sehr konstant'
+  else if (standardDeviation <= 18) label = 'konstant'
+  else label = 'schwankend'
+
+  return { standardDeviation, label }
+}
+
+// ---------------------------------------------------------------------------
+// Written vs. oral — only ever from entries whose category has an explicit,
+// user-set categoryType. Never guessed from the category name.
+// ---------------------------------------------------------------------------
+
+export interface WrittenVsOralInput {
+  value: number
+  scale: GradingScale
+}
+
+export interface WrittenVsOralResult {
+  written: AverageResult
+  oral: AverageResult
+}
+
+/** Null when either side has no data — nothing honest to compare yet. */
+export function calculateWrittenVsOral(
+  written: WrittenVsOralInput[],
+  oral: WrittenVsOralInput[],
+): WrittenVsOralResult | null {
+  if (written.length === 0 || oral.length === 0) return null
+  const writtenAvg = categoryAverage(written.map((e) => ({ ...e, weight: 1 })))
+  const oralAvg = categoryAverage(oral.map((e) => ({ ...e, weight: 1 })))
+  if (writtenAvg.value === null || oralAvg.value === null) return null
+  return { written: writtenAvg, oral: oralAvg }
+}
+
+// ---------------------------------------------------------------------------
+// Recent streak — a plain-language, non-gamified read of the last few
+// results: either "N zuletzt über einer Schwelle" or "N zuletzt über dem
+// bisherigen Schnitt", whichever the caller asks for.
+// ---------------------------------------------------------------------------
+
+/** Length of the trailing run of scores at/above `threshold` — 0 if the very last entry doesn't clear it. */
+export function calculateStreakAboveThreshold(chronologicalScores: number[], threshold: number): number {
+  let streak = 0
+  for (let i = chronologicalScores.length - 1; i >= 0; i--) {
+    if (chronologicalScores[i] < threshold) break
+    streak++
+  }
+  return streak
+}
+
+/**
+ * Length of the trailing run of entries that each beat the average of
+ * everything *before* them — i.e. "your last N were each above your
+ * then-current average", a self-relative bar rather than a fixed threshold.
+ */
+export function calculateStreakAboveRunningAverage(chronologicalScores: number[]): number {
+  let streak = 0
+  for (let i = chronologicalScores.length - 1; i >= 0; i--) {
+    const priorScores = chronologicalScores.slice(0, i)
+    if (priorScores.length === 0) break
+    const priorAverage = priorScores.reduce((sum, s) => sum + s, 0) / priorScores.length
+    if (chronologicalScores[i] <= priorAverage) break
+    streak++
+  }
+  return streak
+}
+
+// ---------------------------------------------------------------------------
+// Dashboard status line — one short, factual, non-judgmental sentence.
+// Rule-based (no LLM); "insufficient-data" always wins over guessing.
+// ---------------------------------------------------------------------------
+
+export type OverallStatusKind = 'strong' | 'improving' | 'declining' | 'stable' | 'insufficient-data'
+
+export interface OverallStatus {
+  kind: OverallStatusKind
+  text: string
+}
+
+const STABLE_SCORE_DELTA_THRESHOLD = 3
+
+export function computeOverallStatus(
+  tier: PerformanceTier | null,
+  improvement: PeriodImprovement | null,
+): OverallStatus {
+  if (tier === null || improvement === null) {
+    return { kind: 'insufficient-data', text: 'Noch nicht genug Daten für einen Trend.' }
+  }
+  if (tier === 'excellent') {
+    return { kind: 'strong', text: 'Aktuell im starken Bereich.' }
+  }
+  if (Math.abs(improvement.scoreDelta) < STABLE_SCORE_DELTA_THRESHOLD) {
+    return { kind: 'stable', text: 'Dein Durchschnitt ist in den letzten 30 Tagen stabil.' }
+  }
+  if (improvement.improved) {
+    return { kind: 'improving', text: 'Deine Leistungen entwickeln sich positiv.' }
+  }
+  return { kind: 'declining', text: 'Deine Leistungen entwickeln sich aktuell rückläufig.' }
 }

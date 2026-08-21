@@ -192,7 +192,12 @@ export async function restoreBackup(backup: BackupFile): Promise<void> {
   )
 }
 
-/** Wipes every local table. Used by "Alle Daten löschen" — the caller is responsible for the confirmation UX. */
+/**
+ * Wipes every local table plus any localStorage state (e.g. the theme
+ * preference) — a full reset, not just the grade data — and returns the app
+ * to a truly blank slate. Used by "Alle Daten löschen"; the caller is
+ * responsible for the confirmation UX.
+ */
 export async function deleteAllData(): Promise<void> {
   await db.transaction(
     'rw',
@@ -210,4 +215,9 @@ export async function deleteAllData(): Promise<void> {
       ])
     },
   )
+  try {
+    localStorage.clear()
+  } catch {
+    // Storage unavailable (private mode) — the IndexedDB wipe above already did the part that matters.
+  }
 }

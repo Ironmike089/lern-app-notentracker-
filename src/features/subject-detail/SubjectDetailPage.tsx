@@ -174,9 +174,7 @@ export function SubjectDetailPage() {
       )}
       {tab === 'einstellungen' && (
         <EinstellungenTab
-          subjectId={subject.id}
-          subjectName={subject.name}
-          subjectWeight={subject.weight ?? 1}
+          subject={subject}
           categories={stats.categories.map((c) => c.category)}
           onChanged={bumpVersion}
         />

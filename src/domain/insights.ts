@@ -1,6 +1,6 @@
 import { isHigherBetter, performanceScore } from './grading'
 import { computeSubjectTrend, type TrendEntryInput } from './analytics'
-import type { GradingScale } from './types'
+import type { CategoryType, GradingScale } from './types'
 
 /**
  * Small, regelbasierte (rule-based) insights — no LLM, no invented data.
@@ -25,26 +25,13 @@ export interface InsightCategoryInput {
   name: string
   weight: number
   entries: InsightEntryInput[]
+  /** Explicit, user-set classification — never guessed from `name`. Absent categories are excluded from written-vs-oral. */
+  categoryType?: CategoryType
 }
 
 const RECENT_STREAK_MIN_TOTAL = 4
 const TREND_MIN_SCORE_DELTA = 2
 const ORAL_WRITTEN_MIN_SCORE_DELTA = 3
-
-function classifyCategory(name: string): 'oral' | 'written' | null {
-  const n = name.toLowerCase()
-  if (n.includes('mündlich') || n.includes('beteiligung')) return 'oral'
-  if (
-    n.includes('schulaufgabe') ||
-    n.includes('kurzarbeit') ||
-    n.includes('klausur') ||
-    n.includes('test') ||
-    n.includes('schriftlich')
-  ) {
-    return 'written'
-  }
-  return null
-}
 
 function allSameScale(entries: { scale: GradingScale }[]): GradingScale | null {
   if (entries.length === 0) return null
@@ -107,8 +94,8 @@ function insightSemesterTrend(subjectName: string, categories: InsightCategoryIn
 }
 
 function insightOralVsWritten(subjectName: string, categories: InsightCategoryInput[]): Insight | null {
-  const oral = categories.filter((c) => classifyCategory(c.name) === 'oral').flatMap((c) => c.entries)
-  const written = categories.filter((c) => classifyCategory(c.name) === 'written').flatMap((c) => c.entries)
+  const oral = categories.filter((c) => c.categoryType === 'oral').flatMap((c) => c.entries)
+  const written = categories.filter((c) => c.categoryType === 'written').flatMap((c) => c.entries)
   if (oral.length === 0 || written.length === 0) return null
 
   const scale = allSameScale([...oral, ...written])

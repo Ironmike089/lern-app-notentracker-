@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react'
 import { Sparkles } from 'lucide-react'
 import type { SchoolProfile } from '../../domain/types'
 import { performanceScore } from '../../domain/grading'
+import type { PeriodImprovement } from '../../domain/analytics'
 import { getSchoolProfile } from '../../services/onboardingService'
 import { getOverallStats, getOverallTrend, type OverallStats, type OverallTrend } from '../../services/gradeStatsService'
+import { calculateOverallImprovement } from '../../services/analyticsService'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { Button } from '../../components/ui/Button'
 import { useSemesterView } from '../app-shell/semesterView'
@@ -25,6 +27,7 @@ export function Dashboard() {
   const [profile, setProfile] = useState<SchoolProfile | undefined>()
   const [stats, setStats] = useState<OverallStats | undefined>()
   const [trend, setTrend] = useState<OverallTrend | null>(null)
+  const [improvement, setImprovement] = useState<PeriodImprovement | null>(null)
   const [loading, setLoading] = useState(true)
   const [sortBy, setSortBy] = useState<SubjectSortOption>('manual')
 
@@ -32,15 +35,18 @@ export function Dashboard() {
     if (!selectedSemesterId) return
     let active = true
     setLoading(true)
+    const sinceDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
     Promise.all([
       getSchoolProfile(),
       getOverallStats(selectedSemesterId),
       getOverallTrend(selectedSemesterId),
-    ]).then(([p, s, t]) => {
+      calculateOverallImprovement(() => true, sinceDate),
+    ]).then(([p, s, t, i]) => {
       if (!active) return
       setProfile(p)
       setStats(s)
       setTrend(t)
+      setImprovement(i)
       setLoading(false)
     })
     return () => {
@@ -78,6 +84,7 @@ export function Dashboard() {
         profile={profile}
         stats={stats}
         trend={trend}
+        improvement={improvement}
         activeSubjectsCount={stats.subjects.length}
         totalEntries={totalEntries}
       />

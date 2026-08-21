@@ -1,4 +1,4 @@
-import type { AssessmentCategory } from '../domain/types'
+import type { AssessmentCategory, CategoryType } from '../domain/types'
 import { validateCategoryWeight } from '../domain/grading'
 import { createId } from '../utils/id'
 import { assessmentCategoryRepository, gradeEntryRepository } from '../storage/repositories'
@@ -41,6 +41,12 @@ export async function setCategoryWeight(id: string, weight: number): Promise<voi
   const category = await assessmentCategoryRepository.getById(id)
   if (!category) return
   await assessmentCategoryRepository.put({ ...category, weight })
+}
+
+export async function setCategoryType(id: string, categoryType: CategoryType): Promise<void> {
+  const category = await assessmentCategoryRepository.getById(id)
+  if (!category) return
+  await assessmentCategoryRepository.put({ ...category, categoryType })
 }
 
 export async function setCategoryEnabled(id: string, enabled: boolean): Promise<void> {

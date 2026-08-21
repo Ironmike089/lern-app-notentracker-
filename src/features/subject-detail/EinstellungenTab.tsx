@@ -1,26 +1,74 @@
 import { useState } from 'react'
-import { ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react'
-import type { AssessmentCategory } from '../../domain/types'
+import { Check, ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react'
+import type { AssessmentCategory, CategoryType, Subject } from '../../domain/types'
+import { CATEGORY_TYPE_LABEL } from '../../domain/assessmentCategories'
+import { SUBJECT_COLOR_KEYS, getSubjectColorKey, subjectColorVar, type SubjectColorKey } from '../../domain/subjectColors'
 import {
   createCategory,
   deleteCategory,
   renameCategory,
   reorderCategories,
   setCategoryEnabled,
+  setCategoryType,
   setCategoryWeight,
 } from '../../services/categoryService'
-import { setSubjectWeight } from '../../services/subjectService'
+import { setSubjectColor, setSubjectWeight } from '../../services/subjectService'
 import { Card } from '../../components/ui/Card'
 import { Switch } from '../../components/ui/Switch'
 import { Button } from '../../components/ui/Button'
 import { useToast } from '../../components/ui/toastContext'
 
 interface EinstellungenTabProps {
-  subjectId: string
-  subjectName: string
-  subjectWeight: number
+  subject: Subject
   categories: AssessmentCategory[]
   onChanged: () => void
+}
+
+function ColorPickerControl({
+  subjectId,
+  subjectName,
+  currentKey,
+  onChanged,
+}: {
+  subjectId: string
+  subjectName: string
+  currentKey: SubjectColorKey
+  onChanged: () => void
+}) {
+  const { showToast } = useToast()
+
+  async function handlePick(key: SubjectColorKey) {
+    if (key === currentKey) return
+    try {
+      await setSubjectColor(subjectId, key)
+      onChanged()
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Farbe konnte nicht geändert werden.', 'error')
+    }
+  }
+
+  return (
+    <div className="space-y-2">
+      <p className="text-sm font-semibold text-ink-soft">Fachfarbe</p>
+      <Card>
+        <div className="flex flex-wrap gap-2" role="group" aria-label={`Fachfarbe von ${subjectName} wählen`}>
+          {SUBJECT_COLOR_KEYS.map((key) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => handlePick(key)}
+              aria-label={`Farbe ${key}`}
+              aria-pressed={key === currentKey}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-transform duration-150 active:scale-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-mint"
+              style={{ backgroundColor: subjectColorVar(key) }}
+            >
+              {key === currentKey && <Check className="h-4 w-4 text-white drop-shadow" strokeWidth={3} />}
+            </button>
+          ))}
+        </div>
+      </Card>
+    </div>
+  )
 }
 
 function CourseWeightControl({
@@ -68,6 +116,7 @@ function CourseWeightControl({
   )
 }
 
+
 interface CategoryRowProps {
   category: AssessmentCategory
   isFirst: boolean
@@ -94,6 +143,11 @@ function CategoryRow({ category, isFirst, isLast, onChanged, onMove }: CategoryR
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Gewichtung ungültig.', 'error')
     }
+  }
+
+  async function handleType(value: string) {
+    await setCategoryType(category.id, value as CategoryType)
+    onChanged()
   }
 
   async function handleToggle(enabled: boolean) {
@@ -164,18 +218,29 @@ function CategoryRow({ category, isFirst, isLast, onChanged, onMove }: CategoryR
 
         <Switch checked={category.enabled} onChange={handleToggle} label={`${category.name} aktiviert`} />
       </div>
+
+      <div className="mt-2 flex items-center gap-2 border-t border-border pt-2.5">
+        <span className="text-xs text-ink-faint">Art</span>
+        <select
+          value={category.categoryType ?? 'other'}
+          onChange={(e) => handleType(e.target.value)}
+          aria-label={`Art von ${category.name}`}
+          className="min-w-0 flex-1 rounded-control border border-border bg-bg-raised px-2 py-1.5 text-sm text-ink outline-none transition-colors focus:border-mint"
+        >
+          {(Object.keys(CATEGORY_TYPE_LABEL) as CategoryType[]).map((type) => (
+            <option key={type} value={type}>
+              {CATEGORY_TYPE_LABEL[type]}
+            </option>
+          ))}
+        </select>
+      </div>
     </Card>
   )
 }
 
-export function EinstellungenTab({
-  subjectId,
-  subjectName,
-  subjectWeight,
-  categories,
-  onChanged,
-}: EinstellungenTabProps) {
+export function EinstellungenTab({ subject, categories, onChanged }: EinstellungenTabProps) {
   const [newName, setNewName] = useState('')
+  const subjectId = subject.id
 
   async function handleMove(category: AssessmentCategory, direction: -1 | 1) {
     const ids = categories.map((c) => c.id)
@@ -197,10 +262,17 @@ export function EinstellungenTab({
 
   return (
     <div className="space-y-5">
+      <ColorPickerControl
+        subjectId={subjectId}
+        subjectName={subject.name}
+        currentKey={getSubjectColorKey(subject)}
+        onChanged={onChanged}
+      />
+
       <CourseWeightControl
         subjectId={subjectId}
-        subjectName={subjectName}
-        weight={subjectWeight}
+        subjectName={subject.name}
+        weight={subject.weight ?? 1}
         onChanged={onChanged}
       />
 

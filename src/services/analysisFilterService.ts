@@ -1,7 +1,7 @@
 import { performanceScore } from '../domain/grading'
 import { compareSemesters, type PeriodScoreDelta, type SemesterComparisonResult } from '../domain/analytics'
 import type { Insight } from '../domain/insights'
-import type { Subject } from '../domain/types'
+import type { GradeEntry, Subject } from '../domain/types'
 import { subjectRepository } from '../storage/repositories'
 import { getAllSemesters } from './schoolYearService'
 import {
@@ -74,6 +74,43 @@ export async function getStatsForFilter(filter: AnalysisDateFilter): Promise<Ove
   // custom range
   if (!filter.from || !filter.to) return null
   return getOverallStatsForDateRange(filter.from, filter.to)
+}
+
+/**
+ * The same filter resolution as getStatsForFilter above, but as a plain
+ * entry predicate — what the new analyticsService.ts calculate*() functions
+ * need. Null means "not resolvable yet" (e.g. an incomplete custom range).
+ */
+export async function resolveEntryFilter(
+  filter: AnalysisDateFilter,
+): Promise<((entry: GradeEntry) => boolean) | null> {
+  const semesters = await getAllSemesters()
+
+  if (filter.kind === 'currentSemester') {
+    const current = semesters.find((s) => s.isCurrent)
+    if (!current) return null
+    return (e) => e.semesterId === current.id
+  }
+
+  if (filter.kind === 'previousSemester') {
+    const current = semesters.find((s) => s.isCurrent)
+    const currentIndex = current ? semesters.findIndex((s) => s.id === current.id) : -1
+    const previous = currentIndex > 0 ? semesters[currentIndex - 1] : undefined
+    if (!previous) return null
+    return (e) => e.semesterId === previous.id
+  }
+
+  if (filter.kind === 'schoolYear') {
+    const current = semesters.find((s) => s.isCurrent) ?? semesters[0]
+    if (!current) return null
+    const idSet = new Set(semesters.filter((s) => s.schoolYearId === current.schoolYearId).map((s) => s.id))
+    return (e) => idSet.has(e.semesterId)
+  }
+
+  // custom range
+  if (!filter.from || !filter.to) return null
+  const { from, to } = filter
+  return (e) => e.date >= from && e.date <= to
 }
 
 /** Compares every semester in the current school year that actually has data. */

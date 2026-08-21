@@ -61,10 +61,15 @@ describe('computeSubjectInsights', () => {
     expect(insights).toContainEqual({ id: 'trend', text: 'Mathematik hat sich dieses Halbjahr verschlechtert.' })
   })
 
-  it('compares oral vs written performance when both categories have data', () => {
+  it('compares oral vs written performance when both categories have an explicit type and data', () => {
     const categories = [
-      category({ id: 'oral', name: 'Mündlich', entries: [e(1, '2026-01-01'), e(1, '2026-01-05')] }),
-      category({ id: 'written', name: 'Schulaufgaben', entries: [e(5, '2026-01-01'), e(5, '2026-01-05')] }),
+      category({ id: 'oral', name: 'Mündlich', categoryType: 'oral', entries: [e(1, '2026-01-01'), e(1, '2026-01-05')] }),
+      category({
+        id: 'written',
+        name: 'Schulaufgaben',
+        categoryType: 'written',
+        entries: [e(5, '2026-01-01'), e(5, '2026-01-05')],
+      }),
     ]
     const insights = computeSubjectInsights('Deutsch', categories)
     expect(insights).toContainEqual({
@@ -74,7 +79,16 @@ describe('computeSubjectInsights', () => {
   })
 
   it('stays silent on oral-vs-written when only one side has data', () => {
-    const categories = [category({ name: 'Mündlich', entries: [e(2, '2026-01-01')] })]
+    const categories = [category({ name: 'Mündlich', categoryType: 'oral', entries: [e(2, '2026-01-01')] })]
+    const insights = computeSubjectInsights('Deutsch', categories)
+    expect(insights.some((i) => i.id === 'oral-vs-written')).toBe(false)
+  })
+
+  it('stays silent on oral-vs-written when the category type was never set, even if the name looks suggestive', () => {
+    const categories = [
+      category({ id: 'a', name: 'Mündlich', entries: [e(1, '2026-01-01'), e(1, '2026-01-05')] }),
+      category({ id: 'b', name: 'Schulaufgaben', entries: [e(5, '2026-01-01'), e(5, '2026-01-05')] }),
+    ]
     const insights = computeSubjectInsights('Deutsch', categories)
     expect(insights.some((i) => i.id === 'oral-vs-written')).toBe(false)
   })

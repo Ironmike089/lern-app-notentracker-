@@ -1,4 +1,5 @@
-import { TrendingDown, TrendingUp } from 'lucide-react'
+import type { ReactNode } from 'react'
+import { BookOpen, ListChecks, Minus, TrendingDown, TrendingUp } from 'lucide-react'
 import type { SchoolProfile } from '../../domain/types'
 import {
   formatGradeValue,
@@ -7,6 +8,7 @@ import {
   performanceTierFromScore,
   pointsToGradeLabel,
 } from '../../domain/grading'
+import { computeOverallStatus, type PeriodImprovement } from '../../domain/analytics'
 import type { OverallStats, OverallTrend } from '../../services/gradeStatsService'
 import { PerformanceBar } from '../../components/ui/PerformanceBar'
 import { WarningBanner } from '../../components/ui/WarningBanner'
@@ -26,21 +28,68 @@ function formatDelta(delta: number, scale: SchoolProfile['gradingScale']): strin
   return formatNumberDe(Math.abs(delta), decimals)
 }
 
+interface StatTileProps {
+  icon: ReactNode
+  label: string
+  value: string
+  tone?: 'up' | 'down' | 'neutral'
+}
+
+function StatTile({ icon, label, value, tone = 'neutral' }: StatTileProps) {
+  return (
+    <div className="flex flex-col gap-1 rounded-control bg-bg-raised/70 p-2.5 backdrop-blur">
+      <div className="flex items-center gap-1.5 text-ink-faint">
+        {icon}
+        <span className="text-[11px] font-medium">{label}</span>
+      </div>
+      <p
+        className={cn(
+          'text-sm font-semibold tabular-nums',
+          tone === 'up' && 'text-perf-excellent',
+          tone === 'down' && 'text-perf-warning',
+          tone === 'neutral' && 'text-ink',
+        )}
+      >
+        {value}
+      </p>
+    </div>
+  )
+}
+
+const STATUS_ICON: Record<ReturnType<typeof computeOverallStatus>['kind'], ReactNode> = {
+  strong: <TrendingUp className="h-3.5 w-3.5" strokeWidth={2.5} />,
+  improving: <TrendingUp className="h-3.5 w-3.5" strokeWidth={2.5} />,
+  declining: <TrendingDown className="h-3.5 w-3.5" strokeWidth={2.5} />,
+  stable: <Minus className="h-3.5 w-3.5" strokeWidth={2.5} />,
+  'insufficient-data': <Minus className="h-3.5 w-3.5" strokeWidth={2.5} />,
+}
+
 interface DashboardHeroProps {
   profile: SchoolProfile
   stats: OverallStats
   trend: OverallTrend | null
+  improvement: PeriodImprovement | null
   activeSubjectsCount: number
   totalEntries: number
 }
 
-export function DashboardHero({ profile, stats, trend, activeSubjectsCount, totalEntries }: DashboardHeroProps) {
+export function DashboardHero({
+  profile,
+  stats,
+  trend,
+  improvement,
+  activeSubjectsCount,
+  totalEntries,
+}: DashboardHeroProps) {
   const { average } = stats
   const hasValue = average.value !== null && average.scale !== null
   const displayValue = useCountUp(average.value)
 
   const score = hasValue ? performanceScore(displayValue as number, average.scale!) : null
   const tier = score !== null ? performanceTierFromScore(score) : null
+  // Status uses the settled value, not the animating count-up display, so the text never flickers mid-animation.
+  const finalTier = hasValue ? performanceTierFromScore(performanceScore(average.value as number, average.scale!)) : null
+  const status = computeOverallStatus(finalTier, improvement)
 
   return (
     <div className="space-y-3">
@@ -80,18 +129,53 @@ export function DashboardHero({ profile, stats, trend, activeSubjectsCount, tota
         </div>
 
         {hasValue && score !== null && tier !== null ? (
-          <PerformanceBar score={score} tier={tier} glow className="relative mt-5" />
+          <>
+            <PerformanceBar score={score} tier={tier} glow className="relative mt-5" />
+            <p
+              className={cn(
+                'relative mt-2 flex items-center gap-1 text-xs font-medium',
+                status.kind === 'strong' || status.kind === 'improving'
+                  ? 'text-perf-excellent'
+                  : status.kind === 'declining'
+                    ? 'text-perf-warning'
+                    : 'text-ink-faint',
+              )}
+            >
+              {STATUS_ICON[status.kind]}
+              {status.text}
+            </p>
+          </>
         ) : (
           <p className="relative mt-5 text-sm text-ink-faint">Noch keine Noten erfasst</p>
         )}
 
-        <p className="relative mt-4 text-xs text-ink-faint">
-          {activeSubjectsCount} aktive {activeSubjectsCount === 1 ? 'Fach' : 'Fächer'} · {totalEntries}{' '}
-          {totalEntries === 1 ? 'Leistung' : 'Leistungen'}
-          {hasValue && average.scale === 'points_0_15' && (
-            <> · ≈ Note {pointsToGradeLabel(average.value as number)}</>
-          )}
-        </p>
+        <div className="relative mt-4 grid grid-cols-4 gap-1.5 sm:gap-2">
+          <StatTile icon={<BookOpen className="h-3.5 w-3.5" strokeWidth={2} />} label="Fächer" value={String(activeSubjectsCount)} />
+          <StatTile icon={<ListChecks className="h-3.5 w-3.5" strokeWidth={2} />} label="Leistungen" value={String(totalEntries)} />
+          <StatTile
+            icon={<TrendingUp className="h-3.5 w-3.5" strokeWidth={2} />}
+            label="Ø-Score"
+            value={score !== null ? `${Math.round(score)}` : '–'}
+          />
+          <StatTile
+            icon={
+              improvement === null ? (
+                <Minus className="h-3.5 w-3.5" strokeWidth={2} />
+              ) : improvement.improved ? (
+                <TrendingUp className="h-3.5 w-3.5" strokeWidth={2} />
+              ) : (
+                <TrendingDown className="h-3.5 w-3.5" strokeWidth={2} />
+              )
+            }
+            label="30 Tage"
+            value={improvement !== null ? formatDelta(improvement.gradeDelta, improvement.scale) : '–'}
+            tone={improvement === null ? 'neutral' : improvement.improved ? 'up' : 'down'}
+          />
+        </div>
+
+        {hasValue && average.scale === 'points_0_15' && (
+          <p className="relative mt-3 text-xs text-ink-faint">≈ Note {pointsToGradeLabel(average.value as number)}</p>
+        )}
       </div>
 
       {stats.mixedScaleWarning && <WarningBanner message={MIXED_SCALE_WARNING} />}

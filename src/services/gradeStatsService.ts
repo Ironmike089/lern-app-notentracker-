@@ -329,6 +329,7 @@ export async function getSubjectInsights(subject: Subject, semesterId: string): 
       id: c.category.id,
       name: c.category.name,
       weight: c.category.weight,
+      categoryType: c.category.categoryType,
       entries: c.entries.map((e) => ({ value: e.value, weight: e.weight ?? 1, scale: e.scale, date: e.date })),
     })),
   )
