@@ -121,6 +121,7 @@ export function SubjectsStep({ initialSelections, submitting, onFinish }: Subjec
               }
             }}
             placeholder="z. B. Astronomie"
+            aria-label="Name des eigenen Fachs"
             className="h-11 flex-1 rounded-control border border-border bg-bg-raised px-3.5 text-sm text-ink placeholder:text-ink-faint outline-none transition-colors focus:border-mint"
           />
           <Button type="button" variant="secondary" onClick={addCustomSubject} aria-label="Fach hinzufügen">

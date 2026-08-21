@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest'
 import {
   calculateWeightedAverage,
   categoryAverage,
+  formatDateDe,
   formatGradeValue,
   formatNumberDe,
+  formatPercent,
   overallAverage,
   performanceScore,
   performanceTierFromScore,
@@ -251,6 +253,28 @@ describe('formatGradeValue / formatNumberDe', () => {
   it('formats points_0_15 as whole points with a trailing "P."', () => {
     expect(formatGradeValue(11, 'points_0_15')).toBe('11 P.')
     expect(formatGradeValue(10.5, 'points_0_15')).toBe('10,5 P.')
+  })
+})
+
+describe('formatPercent', () => {
+  it('formats and rounds a share as a German percentage', () => {
+    expect(formatPercent(50)).toBe('50 %')
+    expect(formatPercent(33.333)).toBe('33 %')
+    expect(formatPercent(0)).toBe('0 %')
+  })
+})
+
+describe('formatDateDe', () => {
+  it('formats an ISO date the German way', () => {
+    expect(formatDateDe('2026-08-21')).toBe('21.08.2026')
+  })
+
+  it('formats a full ISO timestamp the German way', () => {
+    expect(formatDateDe('2026-01-05T10:00:00.000Z')).toBe('05.01.2026')
+  })
+
+  it('returns a dash for an invalid date instead of "Invalid Date"', () => {
+    expect(formatDateDe('not-a-date')).toBe('–')
   })
 })
 

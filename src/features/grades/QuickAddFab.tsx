@@ -10,7 +10,7 @@ export function QuickAddFab() {
       type="button"
       onClick={() => openQuickAdd()}
       aria-label="Neue Note hinzufügen"
-      className="fixed bottom-20 right-5 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-mint text-[#06140f] shadow-lg transition-transform duration-200 hover:brightness-110 active:scale-95 md:bottom-8 md:right-8"
+      className="fixed right-5 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-30 flex h-14 w-14 items-center justify-center rounded-full bg-mint text-[#06140f] shadow-lg transition-transform duration-200 hover:brightness-110 active:scale-95 md:right-8 md:bottom-8"
     >
       <Plus className="h-6 w-6" strokeWidth={2.25} />
     </button>

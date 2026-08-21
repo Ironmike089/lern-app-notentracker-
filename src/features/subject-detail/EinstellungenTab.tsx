@@ -229,6 +229,7 @@ export function EinstellungenTab({
             }
           }}
           placeholder="Neue Kategorie, z. B. Projektarbeit"
+          aria-label="Name der neuen Kategorie"
           className="h-11 flex-1 rounded-control border border-border bg-bg-raised px-3.5 text-sm text-ink placeholder:text-ink-faint outline-none transition-colors focus:border-mint"
         />
         <Button type="button" variant="secondary" onClick={handleAddCategory} aria-label="Kategorie hinzufügen">

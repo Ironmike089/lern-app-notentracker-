@@ -25,9 +25,13 @@ export type SchoolType = 'hauptschule' | 'realschule' | 'gymnasium'
 
 export type GradingScale = 'grade_1_6' | 'points_0_15'
 
+export type ThemePreference = 'system' | 'dark' | 'light'
+
 export interface UserSettings {
   id: 'app'
   onboardingCompleted: boolean
+  /** Absent on rows created before this setting existed — treat as 'system'. */
+  theme?: ThemePreference
   createdAt: string
   updatedAt: string
 }

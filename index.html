@@ -13,6 +13,21 @@
       rel="stylesheet"
     />
     <title>Notentracker</title>
+    <script>
+      // Applies the saved theme before first paint to avoid a flash of the
+      // wrong theme. Mirrors the logic in src/utils/theme.ts, but must run
+      // synchronously and inline (can't wait for the React bundle).
+      (function () {
+        try {
+          var stored = localStorage.getItem('notentracker:theme')
+          if (stored === 'dark' || stored === 'light') {
+            document.documentElement.setAttribute('data-theme', stored)
+          }
+        } catch (e) {
+          // localStorage unavailable (private mode etc.) — system theme applies via CSS.
+        }
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

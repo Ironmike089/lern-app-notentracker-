@@ -246,6 +246,7 @@ export function QuickAddSheet({ open, prefill, onClose, onSaved }: QuickAddSheet
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     placeholder="Bezeichnung, z. B. „1. Schulaufgabe“"
+                    aria-label="Bezeichnung der Note"
                     className="h-11 w-full rounded-control border border-border bg-bg-raised px-3.5 text-sm text-ink placeholder:text-ink-faint outline-none transition-colors focus:border-mint"
                   />
                   <div className="flex gap-2">
@@ -253,6 +254,7 @@ export function QuickAddSheet({ open, prefill, onClose, onSaved }: QuickAddSheet
                       type="date"
                       value={date}
                       onChange={(e) => setDate(e.target.value)}
+                      aria-label="Datum der Note"
                       className="h-11 flex-1 rounded-control border border-border bg-bg-raised px-3.5 text-sm text-ink outline-none transition-colors focus:border-mint"
                     />
                     <div className="flex gap-1">
@@ -277,6 +279,7 @@ export function QuickAddSheet({ open, prefill, onClose, onSaved }: QuickAddSheet
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
                     placeholder="Notiz (optional)"
+                    aria-label="Notiz zur Note"
                     rows={2}
                     className="w-full resize-none rounded-control border border-border bg-bg-raised px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-faint outline-none transition-colors focus:border-mint"
                   />

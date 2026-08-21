@@ -282,6 +282,18 @@ export function formatGradeValue(value: number, scale: GradingScale): string {
   return formatNumberDe(value, 2)
 }
 
+/** Formats a share as a German percentage, e.g. 50 -> "50 %" (non-breaking space, per DIN 5008). */
+export function formatPercent(value: number): string {
+  return `${formatNumberDe(Math.round(value), 0)} %`
+}
+
+/** Formats an ISO date (YYYY-MM-DD or a full timestamp) the German way, e.g. "21.08.2026". */
+export function formatDateDe(isoDate: string): string {
+  const date = new Date(isoDate)
+  if (Number.isNaN(date.getTime())) return '–'
+  return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+}
+
 /** How a new hypothetical entry would move the current average, in scale units. */
 export function simulateNewEntry(
   currentEntries: WeightedInput[],

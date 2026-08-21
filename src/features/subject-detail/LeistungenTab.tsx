@@ -1,6 +1,6 @@
 import { Plus } from 'lucide-react'
 import type { GradeEntry, Subject } from '../../domain/types'
-import { formatGradeValue } from '../../domain/grading'
+import { formatGradeValue, formatPercent } from '../../domain/grading'
 import type { SubjectStats } from '../../services/gradeStatsService'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
@@ -72,7 +72,7 @@ export function LeistungenTab({ subject, stats, onEditEntry }: LeistungenTabProp
                 {categoryStats.average.value !== null && categoryStats.average.scale !== null && (
                   <>Ø {formatGradeValue(categoryStats.average.value, categoryStats.average.scale)} · </>
                 )}
-                {percent !== null ? `Gewichtung ${percent}%` : `Gewichtung ${categoryStats.category.weight}x`}
+                {percent !== null ? `Gewichtung ${formatPercent(percent)}` : `Gewichtung ${categoryStats.category.weight}x`}
               </p>
             </div>
 

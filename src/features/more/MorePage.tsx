@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArchiveRestore, GraduationCap } from 'lucide-react'
+import { ArchiveRestore, GraduationCap, Pencil } from 'lucide-react'
 import { GERMAN_STATES } from '../../domain/germanStates'
 import { SCHOOL_TYPES } from '../../domain/schoolTypes'
 import type { SchoolProfile, Semester, Subject } from '../../domain/types'
@@ -15,6 +15,9 @@ import { useGradeDataVersion } from '../grades/gradeDataVersion'
 import { DashboardSkeleton } from '../dashboard/DashboardSkeleton'
 import { SemesterManager } from './SemesterManager'
 import { UpperSecondaryNotice } from './UpperSecondaryNotice'
+import { SchoolProfileSheet } from './SchoolProfileSheet'
+import { ThemeSection } from './ThemeSection'
+import { DataSection } from './DataSection'
 
 function scaleLabel(profile: SchoolProfile): string {
   return profile.gradingScale === 'points_0_15' ? 'Punkte (0–15)' : 'Noten (1–6)'
@@ -28,6 +31,7 @@ export function MorePage() {
   const [semesters, setSemesters] = useState<Semester[]>([])
   const [archivedSubjects, setArchivedSubjects] = useState<Subject[]>([])
   const [loading, setLoading] = useState(true)
+  const [editingProfile, setEditingProfile] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -57,16 +61,16 @@ export function MorePage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-md space-y-6 lg:max-w-2xl">
-      <h1 className="text-xl font-bold text-ink">Mehr</h1>
+    <div className="mx-auto w-full max-w-md space-y-6 md:max-w-2xl">
+      <h1 className="text-xl font-bold text-ink">Einstellungen</h1>
 
       <div className="space-y-2">
-        <p className="text-sm font-semibold text-ink-soft">Dein Profil</p>
+        <p className="text-sm font-semibold text-ink-soft">Schule</p>
         <Card className="flex items-center gap-3">
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-bg-raised text-ink-soft">
             <GraduationCap className="h-5 w-5" strokeWidth={1.75} />
           </span>
-          <div>
+          <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-ink">
               {schoolTypeName} · Klasse {profile.gradeLevel}
             </p>
@@ -74,12 +78,26 @@ export function MorePage() {
               {stateName} · {scaleLabel(profile)}
             </p>
           </div>
+          <Button
+            variant="secondary"
+            size="md"
+            onClick={() => setEditingProfile(true)}
+            aria-label="Schulprofil bearbeiten"
+          >
+            <Pencil className="h-4 w-4" strokeWidth={2} />
+          </Button>
         </Card>
+        {profile.upperSecondary && <UpperSecondaryNotice state={profile.state} />}
       </div>
 
-      {profile.upperSecondary && <UpperSecondaryNotice state={profile.state} />}
+      <div className="space-y-2">
+        <p className="text-sm font-semibold text-ink-soft">Schuljahr</p>
+        <SemesterManager semesters={semesters} onRenamed={bumpVersion} />
+      </div>
 
-      <SemesterManager semesters={semesters} onRenamed={bumpVersion} />
+      <ThemeSection />
+
+      <DataSection />
 
       {archivedSubjects.length > 0 && (
         <div className="space-y-2">
@@ -101,7 +119,22 @@ export function MorePage() {
         </div>
       )}
 
-      <p className="pt-2 text-center text-xs text-ink-faint">Notentracker · lokal auf diesem Gerät gespeichert</p>
+      <div className="space-y-2">
+        <p className="text-sm font-semibold text-ink-soft">Info</p>
+        <Card>
+          <p className="text-sm text-ink">Notentracker</p>
+          <p className="text-xs text-ink-faint">
+            Version {__APP_VERSION__} · lokal auf diesem Gerät gespeichert, keine Cloud, kein Tracking
+          </p>
+        </Card>
+      </div>
+
+      <SchoolProfileSheet
+        open={editingProfile}
+        onClose={() => setEditingProfile(false)}
+        profile={profile}
+        onChanged={bumpVersion}
+      />
     </div>
   )
 }

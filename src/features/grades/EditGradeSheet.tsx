@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { AssessmentCategory, GradeEntry, Subject } from '../../domain/types'
-import { deleteGradeEntry, updateGradeEntry } from '../../services/gradeEntryService'
+import { deleteGradeEntry, restoreGradeEntry, updateGradeEntry } from '../../services/gradeEntryService'
 import { getSubjectAveragePreview, type SubjectAveragePreview } from '../../services/gradeStatsService'
 import { Sheet } from '../../components/ui/Sheet'
 import { Button } from '../../components/ui/Button'
@@ -84,11 +84,22 @@ export function EditGradeSheet({ entry, subject, semesterId, categories, onClose
   async function handleConfirmedDelete() {
     if (!displayEntry) return
     setSubmitting(true)
-    await deleteGradeEntry(displayEntry.id)
+    const deleted = await deleteGradeEntry(displayEntry.id)
     setSubmitting(false)
     onChanged()
     onClose()
-    showToast('Note gelöscht.', 'info')
+    showToast(
+      'Note gelöscht.',
+      'info',
+      deleted && {
+        label: 'Rückgängig',
+        onClick: async () => {
+          await restoreGradeEntry(deleted)
+          onChanged()
+          showToast('Note wiederhergestellt.', 'success')
+        },
+      },
+    )
   }
 
   if (!displayEntry) return null
@@ -130,6 +141,7 @@ export function EditGradeSheet({ entry, subject, semesterId, categories, onClose
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Bezeichnung"
+          aria-label="Bezeichnung der Note"
           className="h-11 w-full rounded-control border border-border bg-bg-raised px-3.5 text-sm text-ink placeholder:text-ink-faint outline-none transition-colors focus:border-mint"
         />
 
@@ -138,6 +150,7 @@ export function EditGradeSheet({ entry, subject, semesterId, categories, onClose
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
+            aria-label="Datum der Note"
             className="h-11 flex-1 rounded-control border border-border bg-bg-raised px-3.5 text-sm text-ink outline-none transition-colors focus:border-mint"
           />
           <div className="flex gap-1">
@@ -163,6 +176,7 @@ export function EditGradeSheet({ entry, subject, semesterId, categories, onClose
           value={note}
           onChange={(e) => setNote(e.target.value)}
           placeholder="Notiz (optional)"
+          aria-label="Notiz zur Note"
           rows={2}
           className="w-full resize-none rounded-control border border-border bg-bg-raised px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-faint outline-none transition-colors focus:border-mint"
         />

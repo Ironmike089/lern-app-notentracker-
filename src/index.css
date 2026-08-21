@@ -46,6 +46,73 @@ html {
   color-scheme: dark;
 }
 
+/*
+ * Light theme: same structure and accent hues as the dark palette above,
+ * just re-plotted for a light surface. Two ways in:
+ *  - system preference, when the user hasn't chosen explicitly (excluded
+ *    the moment an explicit `data-theme` is set either way)
+ *  - explicit `data-theme="light"` from the Darstellung setting
+ * Accent colors (mint/violet/performance tiers) are darkened here — the
+ * dark-theme values don't clear WCAG AA text contrast on a light surface.
+ */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']):not([data-theme='light']) {
+    color-scheme: light;
+
+    --color-bg: #f5f8f6;
+    --color-bg-raised: #eaf0ec;
+    --color-bg-card: #ffffff;
+    --color-bg-card-hover: #f0f4f1;
+    --color-border: #dbe4de;
+    --color-border-strong: #c2cfc7;
+
+    --color-ink: #13201a;
+    --color-ink-soft: #4b5a51;
+    --color-ink-faint: #7c897f;
+
+    --color-mint: #0a8058;
+    --color-mint-soft: #d3f2e4;
+    --color-violet: #5a5fd6;
+    --color-violet-soft: #e5e6fb;
+
+    --color-perf-excellent: #0a8058;
+    --color-perf-good: #54781e;
+    --color-perf-medium: #8f6608;
+    --color-perf-warning: #a85a17;
+    --color-perf-critical: #d13d47;
+
+    --color-danger: #d13d47;
+  }
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --color-bg: #f5f8f6;
+  --color-bg-raised: #eaf0ec;
+  --color-bg-card: #ffffff;
+  --color-bg-card-hover: #f0f4f1;
+  --color-border: #dbe4de;
+  --color-border-strong: #c2cfc7;
+
+  --color-ink: #13201a;
+  --color-ink-soft: #4b5a51;
+  --color-ink-faint: #7c897f;
+
+  --color-mint: #0a8058;
+  --color-mint-soft: #d3f2e4;
+  --color-violet: #5a5fd6;
+  --color-violet-soft: #e5e6fb;
+
+  --color-perf-excellent: #0a8058;
+  --color-perf-good: #54781e;
+  --color-perf-medium: #8f6608;
+  --color-perf-warning: #a85a17;
+  --color-perf-critical: #d13d47;
+
+  --color-danger: #d13d47;
+}
+
 body {
   margin: 0;
   background: var(--color-bg);
@@ -53,6 +120,7 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 150ms ease-out, color 150ms ease-out;
 }
 
 #root {

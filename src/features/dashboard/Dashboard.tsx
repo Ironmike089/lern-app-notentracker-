@@ -104,7 +104,7 @@ export function Dashboard() {
           <p className="text-sm font-semibold text-ink-soft">Deine Fächer</p>
           <SubjectSortControl value={sortBy} onChange={setSortBy} />
         </div>
-        <div className="space-y-2">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {sortedSubjects.map((subjectStats) => (
             <SubjectCard key={subjectStats.subject.id} stats={subjectStats} />
           ))}

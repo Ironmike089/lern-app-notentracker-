@@ -1,4 +1,5 @@
 import { Outlet, useLocation } from 'react-router-dom'
+import { ErrorBoundary } from '../../components/ErrorBoundary'
 import { Logo } from '../../components/Logo'
 import { SemesterSwitcher } from './SemesterSwitcher'
 import { SemesterViewProvider } from './SemesterViewContext'
@@ -40,7 +41,9 @@ export function AppShell() {
               </header>
 
               <main className="mx-auto w-full max-w-5xl px-5 py-6 pb-24 md:pb-10">
-                <Outlet />
+                <ErrorBoundary key={location.pathname} variant="inline">
+                  <Outlet />
+                </ErrorBoundary>
               </main>
             </div>
 

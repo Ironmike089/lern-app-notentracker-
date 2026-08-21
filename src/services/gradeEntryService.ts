@@ -94,3 +94,8 @@ export async function deleteGradeEntry(id: string): Promise<GradeEntry | undefin
   await gradeEntryRepository.remove(id)
   return existing
 }
+
+/** Puts a previously-deleted entry back exactly as it was — same id/timestamps, no re-validation against a scale that may have since changed. Used for "Rückgängig" after delete. */
+export async function restoreGradeEntry(entry: GradeEntry): Promise<void> {
+  await gradeEntryRepository.put(entry)
+}

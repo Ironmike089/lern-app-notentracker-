@@ -147,7 +147,7 @@ export function AnalyticsPage() {
 
   if (!stats || stats.subjects.every((s: SubjectStats) => s.performanceScore === null)) {
     return (
-      <div className="mx-auto w-full max-w-md space-y-4 lg:max-w-2xl">
+      <div className="mx-auto w-full max-w-md space-y-4 md:max-w-2xl">
         {header}
         {customRangeInputs}
         <EmptyState
@@ -173,7 +173,7 @@ export function AnalyticsPage() {
     distributionScale && allValues.length > 0 ? computeGradeDistribution(allValues, distributionScale) : null
 
   return (
-    <div className="mx-auto w-full max-w-md space-y-6 lg:max-w-2xl">
+    <div className="mx-auto w-full max-w-md space-y-6 md:max-w-2xl">
       {header}
       {customRangeInputs}
 

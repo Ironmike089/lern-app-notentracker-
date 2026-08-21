@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { formatGradeValue } from '../../domain/grading'
+import { formatDateDe, formatGradeValue } from '../../domain/grading'
 import type { TrendPoint } from '../../domain/analytics'
 
 interface TrendChartProps {
@@ -63,7 +63,7 @@ export function TrendChart({ points }: TrendChartProps) {
         ))}
       </svg>
       <p className="text-center text-sm text-ink-soft">
-        {new Date(selected.date).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+        {formatDateDe(selected.date)}
         {' · '}
         <span className="font-semibold text-ink">{formatGradeValue(selected.average, selected.scale)}</span>
       </p>

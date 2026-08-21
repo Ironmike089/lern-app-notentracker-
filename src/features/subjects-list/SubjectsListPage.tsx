@@ -36,7 +36,7 @@ export function SubjectsListPage() {
   const sortedSubjects = sortSubjects(stats.subjects, sortBy)
 
   return (
-    <div className="mx-auto w-full max-w-md space-y-4 lg:max-w-2xl">
+    <div className="mx-auto w-full max-w-md space-y-4 md:max-w-2xl">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-ink">Deine Fächer</h1>
         {stats.subjects.length > 0 && <SubjectSortControl value={sortBy} onChange={setSortBy} />}
@@ -49,7 +49,7 @@ export function SubjectsListPage() {
           description="Deine Fächer aus dem Setup erscheinen hier."
         />
       ) : (
-        <div className="space-y-2 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0">
+        <div className="space-y-2 md:grid md:grid-cols-2 md:gap-3 md:space-y-0">
           {sortedSubjects.map((subjectStats) => (
             <SubjectCard key={subjectStats.subject.id} stats={subjectStats} />
           ))}

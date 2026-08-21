@@ -12,5 +12,5 @@ export const NAV_ITEMS: NavItem[] = [
   { to: '/app', label: 'Übersicht', icon: Home, end: true },
   { to: '/app/subjects', label: 'Fächer', icon: Layers },
   { to: '/app/analytics', label: 'Analyse', icon: LineChart },
-  { to: '/app/more', label: 'Mehr', icon: Settings2 },
+  { to: '/app/more', label: 'Einstellungen', icon: Settings2 },
 ]

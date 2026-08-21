@@ -31,7 +31,7 @@ type SubjectTab = 'leistungen' | 'statistik' | 'einstellungen'
 const TAB_OPTIONS: { value: SubjectTab; label: string }[] = [
   { value: 'leistungen', label: 'Leistungen' },
   { value: 'statistik', label: 'Statistik' },
-  { value: 'einstellungen', label: 'Einstellungen' },
+  { value: 'einstellungen', label: 'Kategorien' },
 ]
 
 export function SubjectDetailPage() {
@@ -91,7 +91,7 @@ export function SubjectDetailPage() {
 
   if (semesterLoading || loading || !subject || !stats || !gradingScale) {
     return (
-      <div className="mx-auto w-full max-w-md space-y-4 lg:max-w-xl">
+      <div className="mx-auto w-full max-w-md space-y-4 md:max-w-xl">
         <div className="h-8 w-32 animate-pulse rounded-control bg-bg-card" />
         <div className="h-24 w-full animate-pulse rounded-card bg-bg-card" />
         <div className="h-40 w-full animate-pulse rounded-card bg-bg-card" />
@@ -102,7 +102,7 @@ export function SubjectDetailPage() {
   const goalScore = goal ? performanceScore(goal.targetValue, gradingScale) : undefined
 
   return (
-    <div className="mx-auto w-full max-w-md space-y-6 lg:max-w-xl">
+    <div className="mx-auto w-full max-w-md space-y-6 md:max-w-xl">
       <button
         type="button"
         onClick={() => navigate('/app/subjects')}
