@@ -1,9 +1,11 @@
 import Dexie, { type Table } from 'dexie'
 import type {
+  AbiProfile,
   AssessmentCategory,
   GradeEntry,
   SchoolProfile,
   SchoolYear,
+  SeminarAssessment,
   Semester,
   Subject,
   SubjectGoal,
@@ -26,6 +28,8 @@ export class NotentrackerDb extends Dexie {
   assessmentCategories!: Table<AssessmentCategory, string>
   gradeEntries!: Table<GradeEntry, string>
   subjectGoals!: Table<SubjectGoal, string>
+  abiProfiles!: Table<AbiProfile, string>
+  seminarAssessments!: Table<SeminarAssessment, string>
 
   constructor() {
     super('notentracker')
@@ -39,6 +43,11 @@ export class NotentrackerDb extends Dexie {
       assessmentCategories: 'id, subjectId',
       gradeEntries: 'id, subjectId, semesterId, categoryId, date',
       subjectGoals: 'id, subjectId, semesterId',
+    })
+
+    this.version(2).stores({
+      abiProfiles: 'id',
+      seminarAssessments: 'id, subjectId',
     })
   }
 }

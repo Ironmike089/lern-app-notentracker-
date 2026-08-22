@@ -1,5 +1,5 @@
 import { Info } from 'lucide-react'
-import { hasVerifiedAbiRules } from '../../domain/abiturRules'
+import { hasVerifiedAbiRules } from '../../domain/abi/states'
 import type { StateCode } from '../../domain/types'
 import { Card } from '../../components/ui/Card'
 

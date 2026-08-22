@@ -3,6 +3,7 @@ import { Sparkles } from 'lucide-react'
 import type { SchoolProfile } from '../../domain/types'
 import { performanceScore } from '../../domain/grading'
 import type { PeriodImprovement } from '../../domain/analytics'
+import { hasVerifiedAbiRules } from '../../domain/abi/states'
 import { getSchoolProfile } from '../../services/onboardingService'
 import { getOverallStats, getOverallTrend, type OverallStats, type OverallTrend } from '../../services/gradeStatsService'
 import { calculateOverallImprovement } from '../../services/analyticsService'
@@ -18,6 +19,7 @@ import { SubjectSortControl } from './SubjectSortControl'
 import { sortSubjects, type SubjectSortOption } from './subjectSort'
 import { AttentionSection } from './AttentionSection'
 import { getAttentionSubjects } from './attention'
+import { AbiEntryCard } from '../abi/AbiEntryCard'
 
 export function Dashboard() {
   const { selectedSemesterId, loading: semesterLoading } = useSemesterView()
@@ -89,6 +91,12 @@ export function Dashboard() {
         totalEntries={totalEntries}
       />
 
+      {profile.upperSecondary && hasVerifiedAbiRules(profile.state) && (
+        <div className="lg:col-start-1">
+          <AbiEntryCard />
+        </div>
+      )}
+
       <div className="lg:sticky lg:top-24 lg:col-start-2 lg:row-span-2">
         {totalEntries === 0 ? (
           <EmptyState
@@ -111,7 +119,7 @@ export function Dashboard() {
           <p className="text-sm font-semibold text-ink-soft">Deine Fächer</p>
           <SubjectSortControl value={sortBy} onChange={setSortBy} />
         </div>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <div className="space-y-2">
           {sortedSubjects.map((subjectStats) => (
             <SubjectCard key={subjectStats.subject.id} stats={subjectStats} />
           ))}

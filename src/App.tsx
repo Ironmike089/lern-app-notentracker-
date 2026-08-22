@@ -11,6 +11,7 @@ import { SubjectDetailPage } from './features/subject-detail/SubjectDetailPage'
 import { SubjectsListPage } from './features/subjects-list/SubjectsListPage'
 import { AnalyticsPage } from './features/analytics/AnalyticsPage'
 import { MorePage } from './features/more/MorePage'
+import { AbiDashboardPage } from './features/abi/AbiDashboardPage'
 
 export default function App() {
   return (
@@ -33,6 +34,7 @@ export default function App() {
                 <Route path="subjects" element={<SubjectsListPage />} />
                 <Route path="subjects/:subjectId" element={<SubjectDetailPage />} />
                 <Route path="analytics" element={<AnalyticsPage />} />
+                <Route path="abi" element={<AbiDashboardPage />} />
                 <Route path="more" element={<MorePage />} />
               </Route>
               <Route path="*" element={<RootGate />} />

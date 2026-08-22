@@ -49,7 +49,7 @@ export function SubjectsListPage() {
           description="Deine Fächer aus dem Setup erscheinen hier."
         />
       ) : (
-        <div className="space-y-2 md:grid md:grid-cols-2 md:gap-3 md:space-y-0">
+        <div className="space-y-2">
           {sortedSubjects.map((subjectStats) => (
             <SubjectCard key={subjectStats.subject.id} stats={subjectStats} />
           ))}

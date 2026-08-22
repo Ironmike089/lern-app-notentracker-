@@ -14,6 +14,8 @@ function validBackup(): BackupFile {
       assessmentCategories: [],
       gradeEntries: [],
       subjectGoals: [],
+      abiProfile: null,
+      seminarAssessments: [],
     },
   }
 }

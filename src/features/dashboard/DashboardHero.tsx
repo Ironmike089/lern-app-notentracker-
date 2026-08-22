@@ -10,7 +10,7 @@ import {
 } from '../../domain/grading'
 import { computeOverallStatus, type PeriodImprovement } from '../../domain/analytics'
 import type { OverallStats, OverallTrend } from '../../services/gradeStatsService'
-import { PerformanceBar } from '../../components/ui/PerformanceBar'
+import { PerformanceGauge } from '../../components/ui/PerformanceGauge'
 import { WarningBanner } from '../../components/ui/WarningBanner'
 import { useCountUp } from '../../utils/useCountUp'
 import { timeBasedGreeting } from '../../utils/greeting'
@@ -100,40 +100,41 @@ export function DashboardHero({
         <div className="relative flex items-start justify-between">
           <div>
             <p className="text-sm text-ink-soft">{timeBasedGreeting()}</p>
-            <p className="text-sm font-medium text-ink-soft">Dein aktueller Schnitt</p>
           </div>
-          <span className="shrink-0 rounded-pill bg-bg-raised/80 px-2.5 py-1 text-xs font-medium text-ink-soft backdrop-blur">
-            {scaleLabel(profile)}
-          </span>
-        </div>
-
-        <div className="relative mt-3 flex items-end gap-3">
-          <p className="text-6xl font-extrabold tracking-tight text-ink tabular-nums">
-            {hasValue ? formatGradeValue(displayValue as number, average.scale!) : '–'}
-          </p>
-          {trend && (
-            <span
-              className={cn(
-                'mb-2 flex items-center gap-1 rounded-pill px-2.5 py-1 text-xs font-semibold',
-                trend.improved ? 'bg-perf-excellent/15 text-perf-excellent' : 'bg-perf-warning/15 text-perf-warning',
-              )}
-            >
-              {trend.improved ? (
-                <TrendingUp className="h-3.5 w-3.5" strokeWidth={2.5} />
-              ) : (
-                <TrendingDown className="h-3.5 w-3.5" strokeWidth={2.5} />
-              )}
-              {formatDelta(trend.delta, profile.gradingScale)} {trend.improved ? 'besser' : 'schwächer'}
+          <div className="flex items-center gap-2">
+            {trend && (
+              <span
+                className={cn(
+                  'flex items-center gap-1 rounded-pill px-2.5 py-1 text-xs font-semibold',
+                  trend.improved ? 'bg-perf-excellent/15 text-perf-excellent' : 'bg-perf-warning/15 text-perf-warning',
+                )}
+              >
+                {trend.improved ? (
+                  <TrendingUp className="h-3.5 w-3.5" strokeWidth={2.5} />
+                ) : (
+                  <TrendingDown className="h-3.5 w-3.5" strokeWidth={2.5} />
+                )}
+                {formatDelta(trend.delta, profile.gradingScale)}
+              </span>
+            )}
+            <span className="shrink-0 rounded-pill bg-bg-raised/80 px-2.5 py-1 text-xs font-medium text-ink-soft backdrop-blur">
+              {scaleLabel(profile)}
             </span>
-          )}
+          </div>
         </div>
 
         {hasValue && score !== null && tier !== null ? (
           <>
-            <PerformanceBar score={score} tier={tier} glow className="relative mt-5" />
+            <PerformanceGauge
+              score={score}
+              tier={tier}
+              primaryValue={formatGradeValue(displayValue as number, average.scale!)}
+              primaryLabel="Gesamtdurchschnitt"
+              className="relative mt-2"
+            />
             <p
               className={cn(
-                'relative mt-2 flex items-center gap-1 text-xs font-medium',
+                'relative mt-2 flex items-center justify-center gap-1 text-xs font-medium',
                 status.kind === 'strong' || status.kind === 'improving'
                   ? 'text-perf-excellent'
                   : status.kind === 'declining'
@@ -146,7 +147,7 @@ export function DashboardHero({
             </p>
           </>
         ) : (
-          <p className="relative mt-5 text-sm text-ink-faint">Noch keine Noten erfasst</p>
+          <p className="relative mt-5 text-center text-sm text-ink-faint">Noch keine Noten erfasst</p>
         )}
 
         <div className="relative mt-4 grid grid-cols-4 gap-1.5 sm:gap-2">

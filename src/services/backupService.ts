@@ -1,8 +1,10 @@
 import type {
+  AbiProfile,
   AssessmentCategory,
   GradeEntry,
   SchoolProfile,
   SchoolYear,
+  SeminarAssessment,
   Semester,
   Subject,
   SubjectGoal,
@@ -11,10 +13,12 @@ import type {
 import { nowIso } from '../utils/id'
 import { db } from '../storage/db'
 import {
+  abiProfileRepository,
   assessmentCategoryRepository,
   gradeEntryRepository,
   schoolProfileRepository,
   schoolYearRepository,
+  seminarAssessmentRepository,
   semesterRepository,
   subjectGoalRepository,
   subjectRepository,
@@ -28,7 +32,7 @@ import {
  * there is nothing yet to migrate from — that gate is exactly what makes
  * migration additions later safe.
  */
-export const BACKUP_VERSION = 1
+export const BACKUP_VERSION = 2
 
 export interface BackupData {
   userSettings: UserSettings | null
@@ -39,6 +43,8 @@ export interface BackupData {
   assessmentCategories: AssessmentCategory[]
   gradeEntries: GradeEntry[]
   subjectGoals: SubjectGoal[]
+  abiProfile: AbiProfile | null
+  seminarAssessments: SeminarAssessment[]
 }
 
 export interface BackupFile {
@@ -48,17 +54,29 @@ export interface BackupFile {
 }
 
 export async function buildBackup(): Promise<BackupFile> {
-  const [userSettings, schoolProfile, schoolYears, semesters, subjects, assessmentCategories, gradeEntries, subjectGoals] =
-    await Promise.all([
-      userSettingsRepository.getById('app'),
-      schoolProfileRepository.getAll().then((rows) => rows[0]),
-      schoolYearRepository.getAll(),
-      semesterRepository.getAll(),
-      subjectRepository.getAll(),
-      assessmentCategoryRepository.getAll(),
-      gradeEntryRepository.getAll(),
-      subjectGoalRepository.getAll(),
-    ])
+  const [
+    userSettings,
+    schoolProfile,
+    schoolYears,
+    semesters,
+    subjects,
+    assessmentCategories,
+    gradeEntries,
+    subjectGoals,
+    abiProfile,
+    seminarAssessments,
+  ] = await Promise.all([
+    userSettingsRepository.getById('app'),
+    schoolProfileRepository.getAll().then((rows) => rows[0]),
+    schoolYearRepository.getAll(),
+    semesterRepository.getAll(),
+    subjectRepository.getAll(),
+    assessmentCategoryRepository.getAll(),
+    gradeEntryRepository.getAll(),
+    subjectGoalRepository.getAll(),
+    abiProfileRepository.getById('app'),
+    seminarAssessmentRepository.getAll(),
+  ])
 
   return {
     version: BACKUP_VERSION,
@@ -72,6 +90,8 @@ export async function buildBackup(): Promise<BackupFile> {
       assessmentCategories,
       gradeEntries,
       subjectGoals,
+      abiProfile: abiProfile ?? null,
+      seminarAssessments,
     },
   }
 }
@@ -128,6 +148,7 @@ export function validateBackup(raw: unknown): { valid: true; backup: BackupFile 
     'assessmentCategories',
     'gradeEntries',
     'subjectGoals',
+    'seminarAssessments',
   ]
   for (const field of arrayFields) {
     if (!Array.isArray(data[field])) {
@@ -166,7 +187,18 @@ export async function restoreBackup(backup: BackupFile): Promise<void> {
   const { data } = backup
   await db.transaction(
     'rw',
-    [db.userSettings, db.schoolProfiles, db.schoolYears, db.semesters, db.subjects, db.assessmentCategories, db.gradeEntries, db.subjectGoals],
+    [
+      db.userSettings,
+      db.schoolProfiles,
+      db.schoolYears,
+      db.semesters,
+      db.subjects,
+      db.assessmentCategories,
+      db.gradeEntries,
+      db.subjectGoals,
+      db.abiProfiles,
+      db.seminarAssessments,
+    ],
     async () => {
       await Promise.all([
         db.userSettings.clear(),
@@ -177,6 +209,8 @@ export async function restoreBackup(backup: BackupFile): Promise<void> {
         db.assessmentCategories.clear(),
         db.gradeEntries.clear(),
         db.subjectGoals.clear(),
+        db.abiProfiles.clear(),
+        db.seminarAssessments.clear(),
       ])
       await Promise.all([
         data.userSettings ? db.userSettings.put(data.userSettings) : Promise.resolve(),
@@ -187,6 +221,8 @@ export async function restoreBackup(backup: BackupFile): Promise<void> {
         db.assessmentCategories.bulkPut(data.assessmentCategories),
         db.gradeEntries.bulkPut(data.gradeEntries),
         db.subjectGoals.bulkPut(data.subjectGoals),
+        data.abiProfile ? db.abiProfiles.put(data.abiProfile) : Promise.resolve(),
+        db.seminarAssessments.bulkPut(data.seminarAssessments),
       ])
     },
   )
@@ -201,7 +237,18 @@ export async function restoreBackup(backup: BackupFile): Promise<void> {
 export async function deleteAllData(): Promise<void> {
   await db.transaction(
     'rw',
-    [db.userSettings, db.schoolProfiles, db.schoolYears, db.semesters, db.subjects, db.assessmentCategories, db.gradeEntries, db.subjectGoals],
+    [
+      db.userSettings,
+      db.schoolProfiles,
+      db.schoolYears,
+      db.semesters,
+      db.subjects,
+      db.assessmentCategories,
+      db.gradeEntries,
+      db.subjectGoals,
+      db.abiProfiles,
+      db.seminarAssessments,
+    ],
     async () => {
       await Promise.all([
         db.userSettings.clear(),
@@ -212,6 +259,8 @@ export async function deleteAllData(): Promise<void> {
         db.assessmentCategories.clear(),
         db.gradeEntries.clear(),
         db.subjectGoals.clear(),
+        db.abiProfiles.clear(),
+        db.seminarAssessments.clear(),
       ])
     },
   )

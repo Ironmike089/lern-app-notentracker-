@@ -18,6 +18,7 @@ import { UpperSecondaryNotice } from './UpperSecondaryNotice'
 import { SchoolProfileSheet } from './SchoolProfileSheet'
 import { ThemeSection } from './ThemeSection'
 import { DataSection } from './DataSection'
+import { AbiSettingsSection } from '../abi/AbiSettingsSection'
 
 function scaleLabel(profile: SchoolProfile): string {
   return profile.gradingScale === 'points_0_15' ? 'Punkte (0–15)' : 'Noten (1–6)'
@@ -94,6 +95,8 @@ export function MorePage() {
         <p className="text-sm font-semibold text-ink-soft">Schuljahr</p>
         <SemesterManager semesters={semesters} onRenamed={bumpVersion} />
       </div>
+
+      {profile.upperSecondary && <AbiSettingsSection profile={profile} onChanged={bumpVersion} />}
 
       <ThemeSection />
 

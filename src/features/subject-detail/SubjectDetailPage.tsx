@@ -22,6 +22,7 @@ import { GoalSolverSheet } from '../grades/GoalSolverSheet'
 import { LeistungenTab } from './LeistungenTab'
 import { StatistikTab } from './StatistikTab'
 import { EinstellungenTab } from './EinstellungenTab'
+import { SeminarDetailPage } from '../abi/SeminarDetailPage'
 
 const MIXED_SCALE_WARNING =
   'Das Bewertungssystem hat sich geändert. Bereits gespeicherte Leistungen werden nicht automatisch umgerechnet.'
@@ -97,6 +98,10 @@ export function SubjectDetailPage() {
         <div className="h-40 w-full animate-pulse rounded-card bg-bg-card" />
       </div>
     )
+  }
+
+  if (subject.kind === 'seminar') {
+    return <SeminarDetailPage subject={subject} />
   }
 
   const goalScore = goal ? performanceScore(goal.targetValue, gradingScale) : undefined
