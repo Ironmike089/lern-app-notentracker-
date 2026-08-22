@@ -41,6 +41,28 @@ export async function setExamPoints(subjectId: string, points: number | null): P
   return profile
 }
 
+/**
+ * Moves a subject between the written and oral exam-subject lists — the
+ * calculator itself treats every ExamResultInput identically regardless of
+ * written/oral (see domain/abi/calculator.ts), so this is a pure re-labeling
+ * of already-chosen subjects, never a re-derivation of any Abitur rule.
+ * examPoints (keyed by subjectId, not by role) is untouched.
+ */
+export async function setExamSubjectRole(
+  subjectId: string,
+  role: 'schriftlich' | 'mündlich',
+): Promise<AbiProfile | undefined> {
+  const existing = await getAbiProfile()
+  if (!existing) return undefined
+  const writtenExamSubjectIds = existing.writtenExamSubjectIds.filter((id) => id !== subjectId)
+  const oralExamSubjectIds = existing.oralExamSubjectIds.filter((id) => id !== subjectId)
+  if (role === 'schriftlich') writtenExamSubjectIds.push(subjectId)
+  else oralExamSubjectIds.push(subjectId)
+  const profile: AbiProfile = { ...existing, writtenExamSubjectIds, oralExamSubjectIds, updatedAt: nowIso() }
+  await abiProfileRepository.put(profile)
+  return profile
+}
+
 export async function clearAbiProfile(): Promise<void> {
   const existing = await getAbiProfile()
   if (existing) await abiProfileRepository.remove(existing.id)
