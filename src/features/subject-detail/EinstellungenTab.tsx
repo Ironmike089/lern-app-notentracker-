@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { Check, ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react'
+import { Check, ChevronDown, ChevronRight, ChevronUp, Plus, Trash2 } from 'lucide-react'
 import type { AssessmentCategory, CategoryType, Subject } from '../../domain/types'
 import { CATEGORY_TYPE_LABEL } from '../../domain/assessmentCategories'
+import { formatNumberDe } from '../../domain/grading'
 import { SUBJECT_COLOR_KEYS, getSubjectColorKey, subjectColorVar, type SubjectColorKey } from '../../domain/subjectColors'
 import {
   createCategory,
@@ -16,6 +17,7 @@ import { setSubjectColor, setSubjectWeight } from '../../services/subjectService
 import { Card } from '../../components/ui/Card'
 import { Switch } from '../../components/ui/Switch'
 import { Button } from '../../components/ui/Button'
+import { Sheet } from '../../components/ui/Sheet'
 import { useToast } from '../../components/ui/toastContext'
 
 interface EinstellungenTabProps {
@@ -117,24 +119,46 @@ function CourseWeightControl({
 }
 
 
-interface CategoryRowProps {
-  category: AssessmentCategory
+/** Compact single-line row for the list — tap opens CategoryDetailSheet for everything else. */
+function CompactCategoryRow({ category, onOpen }: { category: AssessmentCategory; onOpen: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className={
+        'flex w-full items-center gap-3 rounded-card border border-border bg-bg-card px-4 py-3 text-left transition-colors duration-200 hover:bg-bg-card-hover' +
+        (category.enabled ? '' : ' opacity-60')
+      }
+    >
+      <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink">{category.name}</span>
+      <span className="shrink-0 text-sm font-semibold tabular-nums text-ink-soft">
+        {formatNumberDe(category.weight, category.weight % 1 === 0 ? 0 : 1)}×
+      </span>
+      <ChevronRight className="h-4 w-4 shrink-0 text-ink-faint" strokeWidth={2} />
+    </button>
+  )
+}
+
+interface CategoryDetailSheetProps {
+  category: AssessmentCategory | null
   isFirst: boolean
   isLast: boolean
+  onClose: () => void
   onChanged: () => void
   onMove: (direction: -1 | 1) => void
 }
 
-function CategoryRow({ category, isFirst, isLast, onChanged, onMove }: CategoryRowProps) {
+function CategoryDetailSheet({ category, isFirst, isLast, onClose, onChanged, onMove }: CategoryDetailSheetProps) {
   const { showToast } = useToast()
 
   async function handleRename(name: string) {
-    if (name.trim() === category.name || !name.trim()) return
+    if (!category || name.trim() === category.name || !name.trim()) return
     await renameCategory(category.id, name)
     onChanged()
   }
 
   async function handleWeight(value: string) {
+    if (!category) return
     const weight = Number(value)
     if (!Number.isFinite(weight) || weight === category.weight) return
     try {
@@ -146,101 +170,116 @@ function CategoryRow({ category, isFirst, isLast, onChanged, onMove }: CategoryR
   }
 
   async function handleType(value: string) {
+    if (!category) return
     await setCategoryType(category.id, value as CategoryType)
     onChanged()
   }
 
   async function handleToggle(enabled: boolean) {
+    if (!category) return
     await setCategoryEnabled(category.id, enabled)
     onChanged()
   }
 
   async function handleDelete() {
+    if (!category) return
     if (!window.confirm(`„${category.name}“ inklusive aller enthaltenen Noten löschen?`)) return
     await deleteCategory(category.id)
     onChanged()
+    onClose()
   }
 
   return (
-    <Card className={category.enabled ? undefined : 'opacity-60'}>
-      <div className="flex items-center gap-2">
-        <input
-          type="text"
-          defaultValue={category.name}
-          onBlur={(e) => handleRename(e.target.value)}
-          aria-label="Kategoriename"
-          className="min-w-0 flex-1 rounded-control border border-transparent bg-transparent px-2 py-1.5 text-sm font-semibold text-ink outline-none transition-colors hover:border-border focus:border-mint focus:bg-bg-raised"
-        />
-        <button
-          type="button"
-          onClick={handleDelete}
-          aria-label={`${category.name} löschen`}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-control text-ink-faint transition-colors hover:bg-danger/10 hover:text-danger"
-        >
-          <Trash2 className="h-4 w-4" strokeWidth={2} />
-        </button>
-      </div>
-
-      <div className="mt-2 flex items-center gap-3 border-t border-border pt-2.5">
-        <div className="flex shrink-0 flex-col">
-          <button
-            type="button"
-            disabled={isFirst}
-            onClick={() => onMove(-1)}
-            aria-label={`${category.name} nach oben verschieben`}
-            className="flex h-5 w-5 items-center justify-center text-ink-faint transition-colors hover:text-ink disabled:opacity-30"
-          >
-            <ChevronUp className="h-3.5 w-3.5" strokeWidth={2} />
-          </button>
-          <button
-            type="button"
-            disabled={isLast}
-            onClick={() => onMove(1)}
-            aria-label={`${category.name} nach unten verschieben`}
-            className="flex h-5 w-5 items-center justify-center text-ink-faint transition-colors hover:text-ink disabled:opacity-30"
-          >
-            <ChevronDown className="h-3.5 w-3.5" strokeWidth={2} />
-          </button>
+    <Sheet open={!!category} onClose={onClose} title="Kategorie">
+      {category && (
+      <div className="space-y-4">
+        <div className="space-y-1.5">
+          <label className="text-xs font-semibold uppercase tracking-wide text-ink-faint">Name</label>
+          <input
+            type="text"
+            key={category.id}
+            defaultValue={category.name}
+            onBlur={(e) => handleRename(e.target.value)}
+            aria-label="Kategoriename"
+            className="h-11 w-full rounded-control border border-border bg-bg-raised px-3.5 text-sm font-semibold text-ink outline-none transition-colors focus:border-mint"
+          />
         </div>
 
-        <div className="flex flex-1 items-center gap-2">
-          <span className="text-xs text-ink-faint">Gewichtung</span>
+        <div className="space-y-1.5">
+          <label className="text-xs font-semibold uppercase tracking-wide text-ink-faint">Art</label>
+          <select
+            value={category.categoryType ?? 'other'}
+            onChange={(e) => handleType(e.target.value)}
+            aria-label={`Art von ${category.name}`}
+            className="h-11 w-full rounded-control border border-border bg-bg-raised px-3.5 text-sm text-ink outline-none transition-colors focus:border-mint"
+          >
+            {(Object.keys(CATEGORY_TYPE_LABEL) as CategoryType[]).map((type) => (
+              <option key={type} value={type}>
+                {CATEGORY_TYPE_LABEL[type]}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <Card className="flex items-center justify-between gap-3">
+          <span className="text-sm text-ink">Gewichtung</span>
           <input
             type="number"
             min={0}
             step={1}
+            key={category.id}
             defaultValue={category.weight}
             onBlur={(e) => handleWeight(e.target.value)}
             aria-label={`Gewichtung von ${category.name}`}
-            className="w-14 rounded-control border border-border bg-bg-raised px-2 py-1.5 text-center text-sm text-ink outline-none transition-colors focus:border-mint"
+            className="w-16 shrink-0 rounded-control border border-border bg-bg-card px-2 py-1.5 text-center text-sm text-ink outline-none transition-colors focus:border-mint"
           />
-        </div>
+        </Card>
 
-        <Switch checked={category.enabled} onChange={handleToggle} label={`${category.name} aktiviert`} />
-      </div>
+        <Card className="flex items-center justify-between gap-3">
+          <span className="text-sm text-ink">Aktiviert</span>
+          <Switch checked={category.enabled} onChange={handleToggle} label={`${category.name} aktiviert`} />
+        </Card>
 
-      <div className="mt-2 flex items-center gap-2 border-t border-border pt-2.5">
-        <span className="text-xs text-ink-faint">Art</span>
-        <select
-          value={category.categoryType ?? 'other'}
-          onChange={(e) => handleType(e.target.value)}
-          aria-label={`Art von ${category.name}`}
-          className="min-w-0 flex-1 rounded-control border border-border bg-bg-raised px-2 py-1.5 text-sm text-ink outline-none transition-colors focus:border-mint"
-        >
-          {(Object.keys(CATEGORY_TYPE_LABEL) as CategoryType[]).map((type) => (
-            <option key={type} value={type}>
-              {CATEGORY_TYPE_LABEL[type]}
-            </option>
-          ))}
-        </select>
+        <Card className="flex items-center justify-between gap-3">
+          <span className="text-sm text-ink">Reihenfolge</span>
+          <div className="flex shrink-0 gap-1">
+            <button
+              type="button"
+              disabled={isFirst}
+              onClick={() => onMove(-1)}
+              aria-label={`${category.name} nach oben verschieben`}
+              className="flex h-8 w-8 items-center justify-center rounded-control text-ink-faint transition-colors hover:bg-bg-raised hover:text-ink disabled:opacity-30"
+            >
+              <ChevronUp className="h-4 w-4" strokeWidth={2} />
+            </button>
+            <button
+              type="button"
+              disabled={isLast}
+              onClick={() => onMove(1)}
+              aria-label={`${category.name} nach unten verschieben`}
+              className="flex h-8 w-8 items-center justify-center rounded-control text-ink-faint transition-colors hover:bg-bg-raised hover:text-ink disabled:opacity-30"
+            >
+              <ChevronDown className="h-4 w-4" strokeWidth={2} />
+            </button>
+          </div>
+        </Card>
+
+        <Button variant="ghost" size="md" className="w-full text-danger hover:bg-danger/10" onClick={handleDelete}>
+          <Trash2 className="h-4 w-4" strokeWidth={2} />
+          Kategorie löschen
+        </Button>
       </div>
-    </Card>
+      )}
+    </Sheet>
   )
 }
 
 export function EinstellungenTab({ subject, categories, onChanged }: EinstellungenTabProps) {
   const [newName, setNewName] = useState('')
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null)
   const subjectId = subject.id
+  const editingCategory = categories.find((c) => c.id === editingCategoryId) ?? null
+  const editingIndex = editingCategory ? categories.findIndex((c) => c.id === editingCategory.id) : -1
 
   async function handleMove(category: AssessmentCategory, direction: -1 | 1) {
     const ids = categories.map((c) => c.id)
@@ -276,18 +315,23 @@ export function EinstellungenTab({ subject, categories, onChanged }: Einstellung
         onChanged={onChanged}
       />
 
-      <div className="space-y-3">
-        {categories.map((category, index) => (
-          <CategoryRow
-            key={category.id}
-            category={category}
-            isFirst={index === 0}
-            isLast={index === categories.length - 1}
-            onChanged={onChanged}
-            onMove={(direction) => handleMove(category, direction)}
-          />
-        ))}
+      <div className="space-y-2">
+        <p className="text-sm font-semibold text-ink-soft">Notengruppen</p>
+        <div className="space-y-2">
+          {categories.map((category) => (
+            <CompactCategoryRow key={category.id} category={category} onOpen={() => setEditingCategoryId(category.id)} />
+          ))}
+        </div>
       </div>
+
+      <CategoryDetailSheet
+        category={editingCategory}
+        isFirst={editingIndex === 0}
+        isLast={editingIndex === categories.length - 1}
+        onClose={() => setEditingCategoryId(null)}
+        onChanged={onChanged}
+        onMove={(direction) => editingCategory && handleMove(editingCategory, direction)}
+      />
 
       <div className="flex gap-2 pt-1">
         <input

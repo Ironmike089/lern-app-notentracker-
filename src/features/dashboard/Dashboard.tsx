@@ -7,13 +7,14 @@ import { hasVerifiedAbiRules } from '../../domain/abi/states'
 import { getSchoolProfile } from '../../services/onboardingService'
 import { getOverallStats, getOverallTrend, type OverallStats, type OverallTrend } from '../../services/gradeStatsService'
 import { calculateOverallImprovement } from '../../services/analyticsService'
+import { calculateAbiProjection } from '../../services/abiProjectionService'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { Button } from '../../components/ui/Button'
 import { useSemesterView } from '../app-shell/semesterView'
 import { useGradeDataVersion } from '../grades/gradeDataVersion'
 import { useQuickAdd } from '../grades/quickAdd'
 import { DashboardSkeleton } from './DashboardSkeleton'
-import { DashboardHero } from './DashboardHero'
+import { DashboardHero, type AbiPrognoseSummary } from './DashboardHero'
 import { SubjectCard } from './SubjectCard'
 import { SubjectSortControl } from './SubjectSortControl'
 import { sortSubjects, type SubjectSortOption } from './subjectSort'
@@ -30,6 +31,7 @@ export function Dashboard() {
   const [stats, setStats] = useState<OverallStats | undefined>()
   const [trend, setTrend] = useState<OverallTrend | null>(null)
   const [improvement, setImprovement] = useState<PeriodImprovement | null>(null)
+  const [abiPrognose, setAbiPrognose] = useState<AbiPrognoseSummary | null>(null)
   const [loading, setLoading] = useState(true)
   const [sortBy, setSortBy] = useState<SubjectSortOption>('manual')
 
@@ -55,6 +57,21 @@ export function Dashboard() {
       active = false
     }
   }, [selectedSemesterId, version])
+
+  useEffect(() => {
+    let active = true
+    if (!profile?.upperSecondary || !hasVerifiedAbiRules(profile.state)) {
+      setAbiPrognose(null)
+      return
+    }
+    calculateAbiProjection('currentAverage').then((result) => {
+      if (!active) return
+      setAbiPrognose(result ? { totalPoints: result.totalPoints.completed, maxPoints: result.totalPoints.max } : null)
+    })
+    return () => {
+      active = false
+    }
+  }, [profile, version])
 
   if (semesterLoading || loading || !profile || !stats) return <DashboardSkeleton />
 
@@ -89,6 +106,7 @@ export function Dashboard() {
         improvement={improvement}
         activeSubjectsCount={stats.subjects.length}
         totalEntries={totalEntries}
+        abiPrognose={abiPrognose}
       />
 
       {profile.upperSecondary && hasVerifiedAbiRules(profile.state) && (

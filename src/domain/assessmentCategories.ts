@@ -22,6 +22,7 @@ export const CATEGORY_TYPE_LABEL: Record<CategoryType, string> = {
   oral: 'Mündlich',
   presentation: 'Referat',
   practical: 'Praktisch',
+  project: 'Projektarbeit',
   other: 'Sonstiges',
 }
 

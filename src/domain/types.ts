@@ -96,7 +96,7 @@ export interface Subject {
  * mündlich" analysis without guessing from the category name (a category
  * called "Test" could be written or oral depending on the school/subject).
  */
-export type CategoryType = 'written' | 'oral' | 'presentation' | 'practical' | 'other'
+export type CategoryType = 'written' | 'oral' | 'presentation' | 'practical' | 'project' | 'other'
 
 export interface AssessmentCategory {
   id: string

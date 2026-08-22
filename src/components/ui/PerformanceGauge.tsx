@@ -1,5 +1,6 @@
 import { useId } from 'react'
 import { performanceColorVar, type PerformanceTier } from '../../domain/grading'
+import { clampScore, gaugeNeedleAngle, gaugePointOnArc } from '../../domain/gauge'
 import { cn } from '../../utils/cn'
 
 const TIER_LABEL: Record<PerformanceTier, string> = {
@@ -15,10 +16,10 @@ const CY = 112
 const RADIUS = 88
 const STROKE = 15
 const NEEDLE_LENGTH = 74
+const CENTER = { cx: CX, cy: CY }
 
 function pointOnArc(angleDeg: number, radius: number): { x: number; y: number } {
-  const rad = (angleDeg * Math.PI) / 180
-  return { x: CX + radius * Math.cos(rad), y: CY - radius * Math.sin(rad) }
+  return gaugePointOnArc(angleDeg, radius, CENTER)
 }
 
 interface PerformanceGaugeProps {
@@ -43,8 +44,8 @@ interface PerformanceGaugeProps {
  */
 export function PerformanceGauge({ score, tier, primaryValue, primaryLabel, className }: PerformanceGaugeProps) {
   const gradientId = useId()
-  const clamped = Math.min(100, Math.max(0, score))
-  const needleAngle = 180 - (clamped / 100) * 180
+  const clamped = clampScore(score)
+  const needleAngle = gaugeNeedleAngle(score)
 
   const start = pointOnArc(180, RADIUS)
   const end = pointOnArc(0, RADIUS)

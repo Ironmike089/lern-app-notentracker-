@@ -64,6 +64,11 @@ const STATUS_ICON: Record<ReturnType<typeof computeOverallStatus>['kind'], React
   'insufficient-data': <Minus className="h-3.5 w-3.5" strokeWidth={2.5} />,
 }
 
+export interface AbiPrognoseSummary {
+  totalPoints: number
+  maxPoints: number
+}
+
 interface DashboardHeroProps {
   profile: SchoolProfile
   stats: OverallStats
@@ -71,6 +76,8 @@ interface DashboardHeroProps {
   improvement: PeriodImprovement | null
   activeSubjectsCount: number
   totalEntries: number
+  /** Only passed once an Abi-Modul is set up for a verified state — see Dashboard.tsx. */
+  abiPrognose?: AbiPrognoseSummary | null
 }
 
 export function DashboardHero({
@@ -80,6 +87,7 @@ export function DashboardHero({
   improvement,
   activeSubjectsCount,
   totalEntries,
+  abiPrognose,
 }: DashboardHeroProps) {
   const { average } = stats
   const hasValue = average.value !== null && average.scale !== null
@@ -145,6 +153,11 @@ export function DashboardHero({
               {STATUS_ICON[status.kind]}
               {status.text}
             </p>
+            {abiPrognose && (
+              <p className="relative mt-1 text-center text-xs font-medium text-violet">
+                Abi-Prognose: {abiPrognose.totalPoints} / {abiPrognose.maxPoints} P.
+              </p>
+            )}
           </>
         ) : (
           <p className="relative mt-5 text-center text-sm text-ink-faint">Noch keine Noten erfasst</p>

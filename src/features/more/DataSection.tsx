@@ -18,8 +18,6 @@ import { useToast } from '../../components/ui/toastContext'
 
 type Dialog = { kind: 'importConfirm'; backup: BackupFile } | { kind: 'deleteConfirm' } | null
 
-const DELETE_CONFIRM_WORD = 'LÖSCHEN'
-
 function reloadSoon() {
   window.setTimeout(() => window.location.reload(), 700)
 }
@@ -30,11 +28,9 @@ export function DataSection() {
   const [dialog, setDialog] = useState<Dialog>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const [deleteConfirmText, setDeleteConfirmText] = useState('')
 
   function closeDialog() {
     setDialog(null)
-    setDeleteConfirmText('')
   }
 
   async function handleExport() {
@@ -85,7 +81,6 @@ export function DataSection() {
   }
 
   const importCounts = dialog?.kind === 'importConfirm' ? summarize(dialog.backup) : null
-  const deleteConfirmMatches = deleteConfirmText.trim().toUpperCase() === DELETE_CONFIRM_WORD
 
   return (
     <div className="space-y-2">
@@ -132,7 +127,7 @@ export function DataSection() {
             onClick={() => setDialog({ kind: 'deleteConfirm' })}
           >
             <Trash2 className="h-4 w-4" strokeWidth={2} />
-            Alle Daten löschen und App zurücksetzen
+            Konto löschen
           </Button>
         </Card>
       </div>
@@ -166,42 +161,16 @@ export function DataSection() {
         )}
       </Sheet>
 
-      <Sheet
-        open={dialog?.kind === 'deleteConfirm'}
-        onClose={() => !busy && closeDialog()}
-        title="Alle Daten löschen und App zurücksetzen?"
-      >
+      <Sheet open={dialog?.kind === 'deleteConfirm'} onClose={() => !busy && closeDialog()} title="Konto wirklich löschen?">
         <div className="flex flex-col gap-4">
           <ErrorBanner message="Dadurch werden alle Fächer, Noten und Einstellungen auf diesem Gerät unwiderruflich gelöscht. Dieser Schritt kann nicht rückgängig gemacht werden." />
           <p className="text-xs text-ink-faint">Tipp: Exportiere vorher ein Backup, falls du die Daten später brauchst.</p>
-          <div className="space-y-1.5">
-            <label htmlFor="delete-confirm-input" className="text-xs font-medium text-ink-soft">
-              Gib zur Bestätigung <span className="font-bold text-danger">{DELETE_CONFIRM_WORD}</span> ein:
-            </label>
-            <input
-              id="delete-confirm-input"
-              type="text"
-              value={deleteConfirmText}
-              onChange={(e) => setDeleteConfirmText(e.target.value)}
-              disabled={busy}
-              autoComplete="off"
-              autoCapitalize="characters"
-              placeholder={DELETE_CONFIRM_WORD}
-              className="h-11 w-full rounded-control border border-border bg-bg-raised px-3.5 text-sm text-ink outline-none transition-colors focus:border-danger"
-            />
-          </div>
           <div className="flex gap-2">
             <Button variant="ghost" size="lg" className="flex-1" onClick={closeDialog} disabled={busy}>
               Abbrechen
             </Button>
-            <Button
-              variant="danger"
-              size="lg"
-              className="flex-1"
-              onClick={confirmDeleteAll}
-              disabled={busy || !deleteConfirmMatches}
-            >
-              {busy ? 'Löscht…' : 'Ja, alle Daten löschen'}
+            <Button variant="danger" size="lg" className="flex-1" onClick={confirmDeleteAll} disabled={busy}>
+              {busy ? 'Löscht…' : 'Ja, löschen'}
             </Button>
           </div>
         </div>

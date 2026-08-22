@@ -196,7 +196,7 @@ export interface ActivityBreakdown {
 
 export async function calculateActivity(entryFilter: (entry: GradeEntry) => boolean): Promise<ActivityBreakdown> {
   const { categoriesById, entries } = await loadContext(entryFilter)
-  const byType: Record<CategoryType, number> = { written: 0, oral: 0, presentation: 0, practical: 0, other: 0 }
+  const byType: Record<CategoryType, number> = { written: 0, oral: 0, presentation: 0, practical: 0, project: 0, other: 0 }
   for (const entry of entries) {
     const type = categoriesById.get(entry.categoryId)?.categoryType ?? 'other'
     byType[type]++
