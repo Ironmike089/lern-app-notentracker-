@@ -16,6 +16,8 @@ import { DashboardSkeleton } from '../dashboard/DashboardSkeleton'
 import { useGradeDataVersion } from '../grades/gradeDataVersion'
 import { AbiSetupWizard } from './AbiSetupWizard'
 import { AbiSimulatorSheet } from './AbiSimulatorSheet'
+import { AbiExamSubjectsCard } from './AbiExamSubjectsCard'
+import { AbiHalfYearOverview } from './AbiHalfYearOverview'
 
 const ELIGIBILITY_ICON: Record<EligibilityCheck['status'], React.ReactNode> = {
   met: <CheckCircle2 className="h-4 w-4 shrink-0 text-perf-excellent" strokeWidth={2} />,
@@ -183,6 +185,10 @@ export function AbiDashboardPage() {
           <BlockProgress label="Block II — Abiturprüfungen" block={status.blockII} />
         </div>
       )}
+
+      <AbiHalfYearOverview />
+
+      <AbiExamSubjectsCard />
 
       {seminar && (
         <Card className="space-y-2">

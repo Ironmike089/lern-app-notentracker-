@@ -13,7 +13,12 @@ import { describe, expect, it } from 'vitest'
 
 const FORBIDDEN_PATTERNS = [/\bgrid-cols-2\b/, /\bsm:grid-cols-2\b/, /\bmd:grid-cols-2\b/, /\blg:grid-cols-2\b/, /\bxl:grid-cols-2\b/]
 
-const FILES_RENDERING_SUBJECT_LIST = ['Dashboard.tsx', '../subjects-list/SubjectsListPage.tsx']
+const FILES_RENDERING_SUBJECT_LIST = [
+  'Dashboard.tsx',
+  '../subjects-list/SubjectsListPage.tsx',
+  '../abi/AbiHalfYearOverview.tsx',
+  '../abi/AbiExamSubjectsCard.tsx',
+]
 
 function readSource(relativePath: string): string {
   const url = new URL(relativePath, import.meta.url)
@@ -32,4 +37,12 @@ describe('subject list layout', () => {
     const source = readSource('SubjectCard.tsx')
     expect(source).not.toMatch(/\bgrid-cols-/)
   })
+
+  it.each(['../abi/AbiHalfYearOverview.tsx', '../abi/AbiExamSubjectsCard.tsx'])(
+    '%s shows individual subjects with circles/inputs, never a PerformanceBar',
+    (relativePath) => {
+      const source = readSource(relativePath)
+      expect(source).not.toMatch(/PerformanceBar/)
+    },
+  )
 })

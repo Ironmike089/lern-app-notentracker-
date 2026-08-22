@@ -14,6 +14,8 @@ interface ScoreCircleProps {
   value: number
   scale: GradingScale
   size?: 'sm' | 'md'
+  /** Suppresses the trailing "P." unit label — for tight rows of several circles side by side. */
+  hideUnit?: boolean
   className?: string
 }
 
@@ -24,7 +26,7 @@ interface ScoreCircleProps {
  * element. Always driven by the shared performanceScore()/tier lookup, so
  * this never becomes a second, diverging color system.
  */
-export function ScoreCircle({ score, value, scale, size = 'md', className }: ScoreCircleProps) {
+export function ScoreCircle({ score, value, scale, size = 'md', hideUnit = false, className }: ScoreCircleProps) {
   const tier = performanceTierFromScore(score)
   const isPoints = scale === 'points_0_15'
   const label = isPoints ? formatNumberDe(value, Number.isInteger(value) ? 0 : 1) : formatNumberDe(value, 2)
@@ -40,7 +42,7 @@ export function ScoreCircle({ score, value, scale, size = 'md', className }: Sco
       >
         {label}
       </span>
-      {isPoints && <span className="text-[10px] font-medium text-ink-faint">P.</span>}
+      {isPoints && !hideUnit && <span className="text-[10px] font-medium text-ink-faint">P.</span>}
     </span>
   )
 }

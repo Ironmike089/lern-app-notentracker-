@@ -145,6 +145,65 @@ export interface SeminarStatus {
   maxPoints: number
 }
 
+export interface ExamSubjectOverviewRow {
+  subjectId: string
+  subjectName: string
+  subjectIcon: string
+  role: 'schriftlich' | 'mündlich'
+  isPerformanceSubject: boolean
+  points: number | null
+}
+
+/** The actually-known (or still-missing) Abiturprüfung results per exam subject — what the UI needs to let a student enter Block II. */
+export async function getExamSubjectsOverview(): Promise<ExamSubjectOverviewRow[]> {
+  const context = await loadAbiContext()
+  if (!context) return []
+  const { abiProfile, subjects } = context
+
+  function toRow(subjectId: string, role: ExamSubjectOverviewRow['role']): ExamSubjectOverviewRow {
+    const subject = subjects.find((s) => s.id === subjectId)
+    return {
+      subjectId,
+      subjectName: subject?.name ?? 'Unbekanntes Fach',
+      subjectIcon: subject?.icon ?? 'book-open',
+      role,
+      isPerformanceSubject: abiProfile.performanceSubjectIds.includes(subjectId),
+      points: abiProfile.examPoints[subjectId] ?? null,
+    }
+  }
+
+  return [
+    ...abiProfile.writtenExamSubjectIds.map((id) => toRow(id, 'schriftlich')),
+    ...abiProfile.oralExamSubjectIds.map((id) => toRow(id, 'mündlich')),
+  ]
+}
+
+export interface HalfYearOverviewRow {
+  subjectId: string
+  subjectName: string
+  subjectIcon: string
+  cells: { semesterName: string; points: number | null }[]
+}
+
+/** Every Block-I-contributing subject with its per-Ausbildungsabschnitt Halbjahresnote, for a subject-by-subject review (no averaging, just the raw grid grouped by subject). */
+export async function getHalfYearOverview(): Promise<HalfYearOverviewRow[]> {
+  const context = await loadAbiContext()
+  if (!context) return []
+
+  const grid = await collectFullHalfYearGrid(context)
+  const rows = new Map<string, HalfYearOverviewRow>()
+  for (const cell of grid) {
+    let row = rows.get(cell.subjectId)
+    if (!row) {
+      const subject = context.subjects.find((s) => s.id === cell.subjectId)
+      row = { subjectId: cell.subjectId, subjectName: cell.subjectName, subjectIcon: subject?.icon ?? 'book-open', cells: [] }
+      rows.set(cell.subjectId, row)
+    }
+    row.cells.push({ semesterName: cell.semesterName, points: cell.points })
+  }
+  return [...rows.values()]
+}
+
 /** Bavaria-only: the W-Seminar's own separately-tracked score (see docs/abi-rules-audit.md — not folded into Block I). */
 export async function getSeminarStatus(): Promise<SeminarStatus | null> {
   const context = await loadAbiContext()
