@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Activity, BarChart3, Flame, TrendingDown, TrendingUp } from 'lucide-react'
+import { Activity, BarChart3, Flame, GraduationCap, TrendingDown, TrendingUp } from 'lucide-react'
 import { formatDateDe, formatGradeValue, performanceColorVar, performanceScore, type AverageResult } from '../../domain/grading'
 import { computeGradeDistribution, type TrendPoint } from '../../domain/analytics'
 import { CATEGORY_TYPE_LABEL } from '../../domain/assessmentCategories'
+import { hasVerifiedAbiRules } from '../../domain/abi/states'
 import type { Insight } from '../../domain/insights'
 import { type OverallStats, type SubjectStats } from '../../services/gradeStatsService'
+import { getSchoolProfile } from '../../services/onboardingService'
+import { calculateAbiImpactPerSubject, type AbiImpactRow } from '../../services/abiImpactService'
 import {
   getAvailableAnalysisFilters,
   getGlobalInsights,
@@ -269,6 +272,49 @@ function ConsistencyActivityRow({
   )
 }
 
+/**
+ * "Auswirkung auf Abi-Prognose" — only ever shown once an AbiProfile exists
+ * for a verified state (see services/abiImpactService.ts). Deliberately
+ * shows the total-points prognosis, not a fabricated Abitur grade, since
+ * the grade-conversion table isn't verified (see docs/abi-rules-audit.md).
+ */
+function AbiImpactSection({ rows }: { rows: AbiImpactRow[] }) {
+  if (rows.length === 0) return null
+
+  return (
+    <div className="space-y-2">
+      <p className="flex items-center gap-1.5 text-sm font-semibold text-ink-soft">
+        <GraduationCap className="h-4 w-4" strokeWidth={2} />
+        Auswirkung auf Abi-Prognose
+      </p>
+      <div className="space-y-2">
+        {rows.map((row) => {
+          const delta = row.projectedTotalPoints - row.baselineTotalPoints
+          return (
+            <Card key={row.subjectId} className="space-y-1.5">
+              <p className="text-sm font-semibold text-ink">{row.subjectName}</p>
+              <p className="text-xs text-ink-soft">
+                aktuell {row.currentAverage.toFixed(1)} P. · angenommene nächste HJL ({row.nextSemesterName}):{' '}
+                {row.assumedNextPoints} P.
+              </p>
+              <p className="text-sm text-ink">
+                Gesamtpunktzahl-Prognose: <span className="font-bold tabular-nums">{row.baselineTotalPoints}</span>
+                {' → '}
+                <span className="font-bold tabular-nums text-perf-excellent">{row.projectedTotalPoints} P.</span>
+                {delta !== 0 && <span className="text-xs text-ink-faint"> ({delta > 0 ? '+' : ''}{delta})</span>}
+              </p>
+            </Card>
+          )
+        })}
+      </div>
+      <p className="text-xs text-ink-faint">
+        Nutzt dieselbe vereinfachte Berechnung wie der Abi-Bereich (alle erfassten Halbjahresleistungen statt der
+        optimierten Pflichteinbringung) — siehe docs/abi-rules-audit.md.
+      </p>
+    </div>
+  )
+}
+
 export function AnalyticsPage() {
   const { version } = useGradeDataVersion()
 
@@ -289,6 +335,7 @@ export function AnalyticsPage() {
   const [activity, setActivity] = useState<ActivityBreakdown | null>(null)
   const [streak, setStreak] = useState<StreakResult | null>(null)
   const [recentEntries, setRecentEntries] = useState<RecentEntryView[]>([])
+  const [abiImpact, setAbiImpact] = useState<AbiImpactRow[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -297,6 +344,21 @@ export function AnalyticsPage() {
       const current = options.find((o) => o.filter.kind === 'currentSemester' && o.available)
       if (current) setFilter(current.filter)
     })
+  }, [version])
+
+  useEffect(() => {
+    let active = true
+    getSchoolProfile().then(async (profile) => {
+      if (!active || !profile?.upperSecondary || !hasVerifiedAbiRules(profile.state)) {
+        if (active) setAbiImpact([])
+        return
+      }
+      const rows = await calculateAbiImpactPerSubject()
+      if (active) setAbiImpact(rows)
+    })
+    return () => {
+      active = false
+    }
   }, [version])
 
   const effectiveFilter: AnalysisDateFilter = useMemo(
@@ -460,6 +522,8 @@ export function AnalyticsPage() {
           <RankedSubjectBars subjects={ranked} />
         </div>
       )}
+
+      <AbiImpactSection rows={abiImpact} />
 
       {categoryPerformance.length > 0 && (
         <div className="space-y-2">
